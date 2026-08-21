@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { Place, Category } from '../types';
 import { PlaceCard } from '../components/PlaceCard';
+import { InteractiveMap } from '../components/InteractiveMap';
 import { 
   Search, 
   Compass, 
@@ -18,7 +19,8 @@ import {
   Star,
   ShieldCheck,
   CheckCircle2,
-  TrendingUp
+  TrendingUp,
+  Map as MapIcon
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -31,12 +33,14 @@ export const HomeView: React.FC = () => {
     setActiveCategory, 
     setActiveRegion, 
     setSearchQuery, 
-    quickSearch 
+    quickSearch,
+    setSelectedPlaceId
   } = useApp();
 
   const [searchInput, setSearchInput] = useState('');
   const [popularPlaces, setPopularPlaces] = useState<Place[]>([]);
   const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>([]);
+  const [allMapPlaces, setAllMapPlaces] = useState<Place[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,11 +49,13 @@ export const HomeView: React.FC = () => {
     Promise.all([
       api.getPlaces({ popular: true, limit: 6 }),
       api.getPlaces({ recommended: true, limit: 4 }),
+      api.getPlaces({ limit: 200 }),
       api.getCategories()
     ])
-      .then(([pop, rec, cats]) => {
+      .then(([pop, rec, all, cats]) => {
         setPopularPlaces(pop.places);
         setRecommendedPlaces(rec.places);
+        setAllMapPlaces(all.places);
         setCategories(cats);
       })
       .catch(err => console.error('Failed to load home data', err))
@@ -387,6 +393,49 @@ export const HomeView: React.FC = () => {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* Interactive Thailand Tourism Map Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
+              <MapIcon className="w-4 h-4 text-emerald-600" />
+              <span>Interactive Tourism Map</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
+              {lang === 'th' 
+                ? 'แผนที่ท่องเที่ยวประเทศไทยแบบอินเทอร์แอคทีฟ' 
+                : lang === 'zh' 
+                ? '泰国全景互动旅游地图' 
+                : 'Interactive Thailand Tourism Map'}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              {lang === 'th'
+                ? 'คลิกเพื่อสำรวจแลนด์มาร์กสำคัญทั่วทั้ง 5 ภูมิภาค พร้อมรายละเอียดและพิกัด GPS แม่นยำ'
+                : lang === 'zh'
+                ? '点击探索泰国五大区域的核心地标、旅游名胜与精准GPS导航。'
+                : 'Click to explore iconic landmarks across Thailand’s regions with verified GPS coordinates.'}
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              setCurrentView('discover');
+              window.scrollTo(0, 0);
+            }}
+            className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 transition-colors self-start sm:self-auto cursor-pointer"
+          >
+            <span>{t('home.view_all')} (200)</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Map Component */}
+        <InteractiveMap 
+          places={allMapPlaces.length > 0 ? allMapPlaces : popularPlaces} 
+          onSelectPlace={(id) => setSelectedPlaceId(id)} 
+        />
       </section>
 
       {/* Recommended Unseen Highlights */}
