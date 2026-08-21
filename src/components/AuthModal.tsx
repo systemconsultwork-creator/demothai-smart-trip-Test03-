@@ -5,15 +5,8 @@ import { loginWithGoogle } from '../services/firebase';
 import { User } from '../types';
 import { 
   X, 
-  Lock, 
-  Mail, 
-  User as UserIcon, 
   ShieldCheck, 
-  Sparkles, 
-  Heart,
-  ArrowLeft,
-  LogIn,
-  UserPlus
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -42,19 +35,12 @@ export const AuthModal: React.FC = () => {
   const { 
     isAuthModalOpen, 
     setIsAuthModalOpen, 
-    authModalMode, 
-    setAuthModalMode, 
-    authPromptReason,
-    setAuthPromptReason,
     setUser, 
     t, 
     lang,
     showToast 
   } = useApp();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('123456');
-  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -124,10 +110,10 @@ export const AuthModal: React.FC = () => {
       ) {
         showToast(
           lang === 'th'
-            ? 'ระบบ Firebase ยังไม่ได้ตั้งค่า API Key หรือโดเมนที่ถูกต้อง สามารถเข้าสู่ระบบด้วยอีเมลแทนได้'
+            ? 'ระบบ Firebase ยังไม่ได้ตั้งค่า API Key หรือโดเมนที่ถูกต้อง สามารถทดลองใช้งานผ่าน Admin Mode ได้'
             : lang === 'zh'
-            ? 'Firebase API Key 尚未配置或域名未授权，您可以先使用邮箱登录。'
-            : 'Google Sign-in is not configured with a valid API key yet. Please use email sign in.',
+            ? 'Firebase API Key 尚未配置或域名未授权，您可先使用管理员模式体验。'
+            : 'Google Sign-in is not configured with a valid API key yet. Please use Admin Mode.',
           'error'
         );
       } else if (errorCode.includes('auth/popup-blocked')) {
@@ -156,36 +142,6 @@ export const AuthModal: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-
-    setLoading(true);
-    try {
-      if (authModalMode === 'login') {
-        const res = await api.login(email);
-        setUser(res.user);
-        showToast(
-          lang === 'th' ? `ยินดีต้อนรับกลับ, ${res.user.name}!` : lang === 'zh' ? `欢迎回来，${res.user.name}！` : `Welcome back, ${res.user.name}!`,
-          'success'
-        );
-      } else {
-        const res = await api.register(name || email.split('@')[0], email);
-        setUser(res.user);
-        showToast(
-          lang === 'th' ? `สร้างบัญชีสำเร็จ! ยินดีต้อนรับคุณ ${res.user.name}` : lang === 'zh' ? `账号创建成功！欢迎您，${res.user.name}` : `Account created! Welcome, ${res.user.name}!`,
-          'success'
-        );
-      }
-      setIsAuthModalOpen(false);
-    } catch (err: any) {
-      console.error('Auth error', err);
-      showToast(err.message || 'Authentication failed', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAdminMode = async () => {
     setLoading(true);
     try {
@@ -208,7 +164,11 @@ export const AuthModal: React.FC = () => {
     }
   };
 
-  const isFavoritePrompt = authModalMode === 'favorite_prompt';
+  const getSubtitle = () => {
+    if (lang === 'th') return 'เข้าสู่ระบบเพื่อเข้าถึงฟีเจอร์การท่องเที่ยวส่วนตัวของคุณ';
+    if (lang === 'zh') return '登录以获取您的个性化旅游功能。';
+    return 'Sign in to access your personalized travel features.';
+  };
 
   return (
     <AnimatePresence>
@@ -223,248 +183,85 @@ export const AuthModal: React.FC = () => {
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-900 space-y-6"
+          className="relative w-full max-w-md bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-900 space-y-6"
         >
           {/* Close Button [ × ] */}
           <button
             id="auth-modal-close-btn"
             onClick={handleClose}
-            className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
 
-          {/* VIEW MODE 1: FAVORITE REQUIREMENT PROMPT */}
-          {isFavoritePrompt ? (
-            <div id="favorite-auth-prompt" className="space-y-6 text-center pt-2">
-              {/* Heart Icon Badge */}
-              <div className="w-16 h-16 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto shadow-sm">
-                <Heart className="w-8 h-8 fill-rose-500 stroke-rose-600" />
-              </div>
-
-              {/* Title & Description */}
-              <div className="space-y-2">
-                <h2 id="favorite-modal-title" className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                  {t('auth.favorite_modal_title')}
-                </h2>
-                <p id="favorite-modal-desc" className="text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">
-                  {t('auth.favorite_modal_desc')}
-                </p>
-              </div>
-
-              {/* Action Buttons: Login & Register & Close */}
-              <div className="space-y-3 pt-2">
-                <button
-                  id="favorite-prompt-login-btn"
-                  type="button"
-                  onClick={() => setAuthModalMode('login')}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>{t('auth.login_btn')}</span>
-                </button>
-
-                <button
-                  id="favorite-prompt-register-btn"
-                  type="button"
-                  onClick={() => setAuthModalMode('register')}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-800 border border-slate-300 font-bold text-sm shadow-xs transition-all flex items-center justify-center gap-2"
-                >
-                  <UserPlus className="w-4 h-4 text-emerald-600" />
-                  <span>{t('auth.register_btn')}</span>
-                </button>
-
-                <button
-                  id="favorite-prompt-close-btn"
-                  type="button"
-                  onClick={handleClose}
-                  className="w-full py-2.5 px-6 rounded-2xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 font-medium text-xs transition-colors"
-                >
-                  {t('auth.close_btn')}
-                </button>
-              </div>
-
-              {/* Developer Admin Mode */}
-              <div className="pt-2 border-t border-slate-100">
-                <button
-                  id="favorite-prompt-admin-btn"
-                  type="button"
-                  onClick={handleAdminMode}
-                  className="w-full py-2.5 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-                >
-                  <ShieldCheck className="w-4 h-4 text-amber-600" />
-                  <span>Admin Mode</span>
-                </button>
-              </div>
+          {/* Modal Header */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              <span>Thai Smart Trip Explorer</span>
             </div>
-          ) : (
-            /* VIEW MODE 2: LOGIN / REGISTER FORMS */
-            <>
-              {/* Back Button if navigated from favorite prompt */}
-              {authPromptReason === 'favorite' && (
-                <button
-                  type="button"
-                  onClick={() => setAuthModalMode('favorite_prompt')}
-                  className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-700 font-semibold transition-colors -mb-2"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>{t('auth.back_to_prompt')}</span>
-                </button>
+            <h2 id="auth-modal-title" className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {t('auth.login_title')}
+            </h2>
+            <p id="auth-modal-desc" className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+              {getSubtitle()}
+            </p>
+          </div>
+
+          {/* Action Buttons Section */}
+          <div className="space-y-4 pt-1">
+            {/* Primary Action: Google Login */}
+            <button
+              id="google-signin-btn"
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={googleLoading || loading}
+              className="w-full py-3.5 px-5 rounded-2xl bg-white hover:bg-slate-50 active:scale-[0.99] border border-slate-300 hover:border-slate-400 text-slate-800 font-bold text-sm sm:text-base shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {googleLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-emerald-600 rounded-full animate-spin"></div>
+                  <span>{t('auth.loggingIn')}</span>
+                </>
+              ) : (
+                <>
+                  <GoogleIcon />
+                  <span>{t('auth.loginWithGoogle')}</span>
+                </>
               )}
+            </button>
 
-              {/* Header */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold uppercase tracking-wider">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Thai Smart Trip Explorer</span>
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900">
-                  {authModalMode === 'login' ? t('auth.login_title') : t('auth.register_title')}
-                </h2>
-                <p className="text-xs text-slate-500">
-                  {authModalMode === 'login' 
-                    ? (lang === 'th' ? 'เข้าสู่ระบบเพื่อบันทึกสถานที่โปรดและร่วมเขียนรีวิว' : lang === 'zh' ? '登录以保存收藏景点并发表真实评价' : 'Sign in to save favorite destinations and write reviews')
-                    : (lang === 'th' ? 'สร้างบัญชีเพื่อเข้าร่วมชุมชนท่องเที่ยวไทย' : lang === 'zh' ? '注册账号加入泰国旅游社区' : 'Create an account to join the Thai travel community')}
-                </p>
-              </div>
+            {/* Divider: ──────── or ──────── */}
+            <div className="relative flex items-center justify-center py-1">
+              <div className="w-full border-t border-slate-200"></div>
+              <span className="bg-white px-3 text-xs font-medium text-slate-400 select-none">
+                {t('auth.or')}
+              </span>
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {authModalMode === 'register' && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">{t('auth.name')}</label>
-                    <div className="relative">
-                      <UserIcon className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Somchai Explorer"
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">{t('auth.email')}</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="your.email@example.com"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700">{t('auth.password')}</label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading || googleLoading}
-                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>{t('auth.loggingIn')}</span>
-                    </>
-                  ) : (
-                    authModalMode === 'login' ? t('auth.login_btn') : t('auth.register_btn')
-                  )}
-                </button>
-              </form>
-
-              {/* ─────── OR Divider ─────── */}
-              <div className="relative flex items-center justify-center">
-                <div className="w-full border-t border-slate-200"></div>
-                <span className="bg-white px-3 text-xs font-semibold text-slate-400 tracking-wider uppercase shrink-0 select-none">
-                  {t('auth.or')}
-                </span>
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-
-              {/* ─── Sign in with Google Button ─── */}
-              <button
-                id="google-signin-btn"
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={googleLoading || loading}
-                className="w-full py-3 px-4 rounded-xl bg-white hover:bg-slate-50 active:scale-[0.99] border border-slate-300 hover:border-slate-400 text-slate-700 font-semibold text-sm shadow-2xs hover:shadow-xs transition-all flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {googleLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-slate-300 border-t-emerald-600 rounded-full animate-spin"></div>
-                    <span>{t('auth.loggingIn')}</span>
-                  </>
-                ) : (
-                  <>
-                    <GoogleIcon />
-                    <span>{t('auth.loginWithGoogle')}</span>
-                  </>
-                )}
-              </button>
-
-              {/* Toggle Mode */}
-              <div className="text-center pt-2 border-t border-slate-100">
-                {authModalMode === 'login' ? (
-                  <p className="text-xs text-slate-500">
-                    {t('auth.no_account')}{' '}
-                    <button
-                      type="button"
-                      onClick={() => setAuthModalMode('register')}
-                      className="text-emerald-700 hover:underline font-bold"
-                    >
-                      {t('auth.register_title')}
-                    </button>
-                  </p>
-                ) : (
-                  <p className="text-xs text-slate-500">
-                    {t('auth.have_account')}{' '}
-                    <button
-                      type="button"
-                      onClick={() => setAuthModalMode('login')}
-                      className="text-emerald-700 hover:underline font-bold"
-                    >
-                      {t('auth.login_title')}
-                    </button>
-                  </p>
-                )}
-              </div>
-
-              {/* ──────────────── Developer Admin Mode ──────────────── */}
-              <div className="pt-2 border-t border-slate-100">
-                <button
-                  id="auth-admin-mode-btn"
-                  type="button"
-                  onClick={handleAdminMode}
-                  disabled={loading || googleLoading}
-                  className="w-full py-2.5 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-2xs cursor-pointer"
-                >
+            {/* Secondary Action: Admin Mode */}
+            <button
+              id="auth-admin-mode-btn"
+              type="button"
+              onClick={handleAdminMode}
+              disabled={loading || googleLoading}
+              className="w-full py-3 px-5 rounded-2xl bg-amber-50/70 hover:bg-amber-100/80 active:scale-[0.99] border border-amber-300 hover:border-amber-400 text-amber-900 font-bold text-sm flex items-center justify-center gap-2.5 transition-all shadow-2xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin"></div>
+                  <span>{t('auth.loggingIn')}</span>
+                </>
+              ) : (
+                <>
                   <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Admin Mode</span>
-                </button>
-              </div>
-            </>
-          )}
+                  <span>{t('auth.admin_mode')}</span>
+                </>
+              )}
+            </button>
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>

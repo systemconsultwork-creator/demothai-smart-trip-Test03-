@@ -28,7 +28,6 @@ export const Navbar: React.FC = () => {
     user, 
     isAdmin,
     setIsAuthModalOpen, 
-    setAuthModalMode, 
     logout,
     favorites
   } = useApp();
@@ -228,22 +227,11 @@ export const Navbar: React.FC = () => {
                 <button
                   id="nav-login-btn"
                   onClick={() => {
-                    setAuthModalMode('login');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-3 xl:px-3.5 py-1.5 rounded-xl text-xs xl:text-sm font-semibold text-emerald-700 hover:bg-emerald-50 border border-emerald-600/30 transition-colors shrink-0 whitespace-nowrap"
+                  className="px-4 py-2 rounded-xl text-xs xl:text-sm font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white transition-all shadow-xs shrink-0 whitespace-nowrap cursor-pointer"
                 >
                   {t('nav.login')}
-                </button>
-                <button
-                  id="nav-register-btn"
-                  onClick={() => {
-                    setAuthModalMode('register');
-                    setIsAuthModalOpen(true);
-                  }}
-                  className="px-3 xl:px-3.5 py-1.5 rounded-xl text-xs xl:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-2xs shrink-0 whitespace-nowrap"
-                >
-                  {t('nav.register')}
                 </button>
               </div>
             )}
@@ -338,26 +326,16 @@ export const Navbar: React.FC = () => {
                 </button>
               </div>
             ) : (
-              <div className="flex gap-2 w-full">
+              <div className="w-full">
                 <button
+                  id="mobile-nav-login-btn"
                   onClick={() => {
-                    setAuthModalMode('login');
                     setIsAuthModalOpen(true);
                     setMobileMenuOpen(false);
                   }}
-                  className="flex-1 py-2 text-center text-xs font-semibold rounded-xl border border-emerald-600/40 text-emerald-700 hover:bg-emerald-50"
+                  className="w-full py-2.5 text-center text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white shadow-xs transition-all cursor-pointer"
                 >
                   {t('nav.login')}
-                </button>
-                <button
-                  onClick={() => {
-                    setAuthModalMode('register');
-                    setIsAuthModalOpen(true);
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex-1 py-2 text-center text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                >
-                  {t('nav.register')}
                 </button>
               </div>
             )}

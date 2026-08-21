@@ -68,26 +68,14 @@ export const ProfileView: React.FC = () => {
             {t('auth.favorite_view_desc')}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+        <div className="flex items-center justify-center pt-2">
           <button
             onClick={() => {
-              setAuthPromptReason('favorite');
-              setAuthModalMode('login');
               setIsAuthModalOpen(true);
             }}
-            className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+            className="w-full sm:w-auto min-w-[200px] px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>{t('auth.login_btn')}</span>
-          </button>
-          <button
-            onClick={() => {
-              setAuthPromptReason('favorite');
-              setAuthModalMode('register');
-              setIsAuthModalOpen(true);
-            }}
-            className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-800 border border-slate-300 font-bold text-sm shadow-xs transition-all flex items-center justify-center gap-2"
-          >
-            <span>{t('auth.register_btn')}</span>
           </button>
         </div>
       </div>

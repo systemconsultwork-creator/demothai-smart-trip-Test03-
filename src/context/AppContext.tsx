@@ -175,8 +175,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // 2. ปรับการ toggleFavorite ให้บันทึกลง Firebase Firestore
   const toggleFavorite = async (placeId: number) => {
     if (!user) {
-      setAuthPromptReason('favorite');
-      setAuthModalMode('favorite_prompt');
       setIsAuthModalOpen(true);
       return;
     }
