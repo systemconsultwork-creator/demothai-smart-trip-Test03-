@@ -155,6 +155,18 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
     return { clusters: clusterList, singleMarkers: singles };
   }, [mappedPlaces, zoom]);
 
+  // Region selection affects ONLY which destination markers are shown.
+  // The Thailand province background is intentionally never filtered, faded, or recolored.
+  const visibleClusters = useMemo(() => {
+    if (activeRegion === 'all') return clusters;
+    return clusters.filter(cluster => cluster.regionId === activeRegion || (activeRegion === 'central' && cluster.regionId === 'east'));
+  }, [clusters, activeRegion]);
+
+  const visibleSingleMarkers = useMemo(() => {
+    if (activeRegion === 'all') return singleMarkers;
+    return singleMarkers.filter(place => place.effectiveRegion === activeRegion || (activeRegion === 'central' && place.effectiveRegion === 'east'));
+  }, [singleMarkers, activeRegion]);
+
   return (
     <div id="thailand-interactive-map-section" className="relative w-full rounded-3xl bg-white border border-slate-200/90 shadow-xl overflow-hidden flex flex-col lg:flex-row">
       <div
@@ -174,18 +186,17 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
               </filter>
             </defs>
 
-            {/* Background: static only. No hover, click, tooltip, or province interaction. */}
+            {/* Background: static only. No hover, click, tooltip, fading, or region interaction. */}
             <g id="static-thailand-provinces-layer" filter="url(#thailand-coastal-relief)" pointerEvents="none" className="pointer-events-none select-none">
               {THAILAND_PROVINCES.map(prov => {
                 const style = REGION_STYLES[prov.region] || REGION_STYLES.central;
-                const active = activeRegion === 'all' || activeRegion === prov.region || (activeRegion === 'central' && prov.region === 'east');
-                return <path key={prov.name} d={prov.path} fill={style.fill} stroke="#FFFFFF" strokeWidth="0.75" strokeLinejoin="round" strokeLinecap="round" opacity={active ? 1 : 0.4} pointerEvents="none" />;
+                return <path key={prov.name} d={prov.path} fill={style.fill} stroke="#FFFFFF" strokeWidth="0.75" strokeLinejoin="round" strokeLinecap="round" opacity={1} pointerEvents="none" />;
               })}
             </g>
 
-            {/* Markers: interactive, geographically fixed. */}
+            {/* Markers: interactive and filtered by selected region only. */}
             <g id="interactive-destination-markers-layer" pointerEvents="auto">
-              {clusters.map(cluster => {
+              {visibleClusters.map(cluster => {
                 const style = REGION_STYLES[cluster.regionId] || REGION_STYLES.central;
                 return (
                   <g key={cluster.id} transform={`translate(${cluster.x}, ${cluster.y})`} className="cursor-pointer" onClick={e => {
@@ -201,7 +212,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
                 );
               })}
 
-              {singleMarkers.map(place => {
+              {visibleSingleMarkers.map(place => {
                 const isSelected = selectedPlace?.id === place.id;
                 const isHovered = hoveredPlace?.id === place.id;
                 const style = REGION_STYLES[place.effectiveRegion] || REGION_STYLES.central;
@@ -225,7 +236,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
           </svg>
         </div>
 
-        {/* Region controls remain UI controls; they do not alter marker click behavior. */}
+        {/* Region controls remain UI controls; they filter markers only. */}
         <div className="absolute inset-0 pointer-events-none p-4 sm:p-6 flex flex-col justify-between z-20">
           <div className="flex items-start justify-between gap-2">
             {(['north','northeast'] as const).map(reg => {
