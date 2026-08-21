@@ -53,7 +53,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
   const handleMarkerClick = (place: Place, e?: React.MouseEvent) => { e?.stopPropagation(); if (hasDraggedRef.current) return; setSelectedPlace(place); };
   const handleResetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); if (activeRegion !== 'all') setActiveRegion('all'); };
 
-  // Wheel zoom is handled only on the map viewport. It never scrolls the page.
+  // Wheel zoom is exclusive to the map viewport. Page scrolling is blocked here.
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -75,6 +75,31 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
     setPan({ x: dragStartRef.current.panX + dx, y: dragStartRef.current.panY + dy });
   };
   const handleMouseUp = () => setIsDragging(false);
+
+  // Touch/trackpad gesture lock: touching the map never scrolls the page.
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a')) return;
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    hasDraggedRef.current = false;
+    setIsDragging(true);
+    dragStartRef.current = { x: touch.clientX, y: touch.clientY, panX: pan.x, panY: pan.y };
+    e.preventDefault();
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button, a')) return;
+    if (!isDragging || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - dragStartRef.current.x;
+    const dy = touch.clientY - dragStartRef.current.y;
+    if (Math.hypot(dx, dy) >= 5) hasDraggedRef.current = true;
+    setPan({ x: dragStartRef.current.panX + dx, y: dragStartRef.current.panY + dy });
+    e.preventDefault();
+  };
+  const handleTouchEnd = () => setIsDragging(false);
+
   const handleRegionClick = (regId: string) => {
     if (activeRegion === regId || (regId === 'east' && activeRegion === 'central')) setActiveRegion('all');
     else setActiveRegion(regId === 'east' ? 'central' : regId);
@@ -114,11 +139,16 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
     <div id="thailand-interactive-map-section" className="relative w-full rounded-3xl bg-white border border-slate-200/90 shadow-xl overflow-hidden flex flex-col lg:flex-row">
       <div
         className={`relative flex-1 min-h-[580px] sm:min-h-[660px] lg:min-h-[740px] bg-gradient-to-b from-[#F0F9FF] via-[#E6F4FA] to-[#DCF0F7] overflow-hidden select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        style={{ overscrollBehavior: 'contain', touchAction: 'none' }}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         <div className="absolute inset-0 flex items-center justify-center will-change-transform" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'center center' }}>
           <svg viewBox={`0 0 ${THAILAND_MAP_PROJECTION.width} ${THAILAND_MAP_PROJECTION.height}`} className="w-[360px] sm:w-[440px] md:w-[490px] lg:w-[530px] h-auto overflow-visible" style={{ maxHeight: '94%' }}>
