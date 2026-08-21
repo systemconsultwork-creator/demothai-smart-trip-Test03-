@@ -1,0 +1,38 @@
+[
+  {
+    "id": "nature",
+    "name": { "th": "ธรรมชาติและภูเขา", "en": "Nature & Mountains", "zh": "自然与山脉" },
+    "icon": "Mountain",
+    "color": "emerald"
+  },
+  {
+    "id": "temple",
+    "name": { "th": "วัดและศาสนสถาน", "en": "Temples & Culture", "zh": "寺庙与宗教" },
+    "icon": "Landmark",
+    "color": "amber"
+  },
+  {
+    "id": "sea",
+    "name": { "th": "ทะเลและหมู่เกาะ", "en": "Beaches & Islands", "zh": "海滩与岛屿" },
+    "icon": "Palmtree",
+    "color": "cyan"
+  },
+  {
+    "id": "market",
+    "name": { "th": "ตลาดและสตรีทฟู้ด", "en": "Markets & Street Food", "zh": "市场与街头美食" },
+    "icon": "ShoppingBag",
+    "color": "rose"
+  },
+  {
+    "id": "history",
+    "name": { "th": "ประวัติศาสตร์และมรดกโลก", "en": "History & Heritage", "zh": "历史与世界遗产" },
+    "icon": "Castle",
+    "color": "indigo"
+  },
+  {
+    "id": "lifestyle",
+    "name": { "th": "ชุมชนและวิถีชีวิต", "en": "Community & Lifestyle", "zh": "社区与生活风情" },
+    "icon": "Users",
+    "color": "teal"
+  }
+]

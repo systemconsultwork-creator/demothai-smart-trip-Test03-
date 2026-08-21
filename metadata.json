@@ -1,0 +1,7 @@
+{
+  "name": "Thai Smart Trip",
+  "description": "ค้นหาและค้นพบสถานที่ท่องเที่ยวทั่วประเทศไทย 200 แห่ง รองรับ 3 ภาษา (TH/EN/ZH) พร้อมระบบรีวิว แนะนำสถานที่ และ Admin Dashboard",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

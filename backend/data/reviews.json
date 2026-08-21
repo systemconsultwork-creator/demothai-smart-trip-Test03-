@@ -1,0 +1,57 @@
+[
+  {
+    "id": "rev-1",
+    "placeId": 1,
+    "userId": "usr-1",
+    "userName": "Somchai Jaidee",
+    "userAvatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+    "rating": 5,
+    "comment": "ยอดดอยอินทนนท์อากาศหนาวสดชื่นมาก เส้นทางเดินศึกษาธรรมชาติสวยงาม คุ้มค่าแก่การมาเยือน",
+    "createdAt": "2026-08-10T08:30:00.000Z",
+    "language": "th"
+  },
+  {
+    "id": "rev-2",
+    "placeId": 1,
+    "userId": "usr-2",
+    "userName": "Sarah Jenkins",
+    "userAvatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
+    "rating": 5,
+    "comment": "Breathtaking views and wonderfully cool climate. The twin pagodas surrounded by gardens were stunning.",
+    "createdAt": "2026-08-12T10:15:00.000Z",
+    "language": "en"
+  },
+  {
+    "id": "rev-3",
+    "placeId": 51,
+    "userId": "usr-3",
+    "userName": "Li Wei (李伟)",
+    "userAvatar": "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&q=80",
+    "rating": 5,
+    "comment": "玉佛寺金碧辉煌，建筑细节极其精致，泰国佛教文化的巅峰之作！",
+    "createdAt": "2026-08-14T14:20:00.000Z",
+    "language": "zh"
+  },
+  {
+    "id": "rev-4",
+    "placeId": 156,
+    "userId": "usr-4",
+    "userName": "Natacha K.",
+    "userAvatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=150&q=80",
+    "rating": 5,
+    "comment": "อ่าวมาหยาหลังจากฟื้นฟูธรรมชาติแล้วน้ำใสเหมือนกระจก ปูลมและฉลามหูดำว่ายมาให้เห็นใกล้ๆ ประทับใจมากค่ะ",
+    "createdAt": "2026-08-15T09:45:00.000Z",
+    "language": "th"
+  },
+  {
+    "id": "rev-5",
+    "placeId": 109,
+    "userId": "usr-5",
+    "userName": "Thanapol S.",
+    "userAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+    "rating": 5,
+    "comment": "ถ้ำนาคาอัศจรรย์สมคำร่ำลือ ลวดลายหินเหมือนเกล็ดพญานาคจริงๆ เดินเหนื่อยหน่อยแต่คุ้มค่ามาก",
+    "createdAt": "2026-08-16T11:00:00.000Z",
+    "language": "th"
+  }
+]

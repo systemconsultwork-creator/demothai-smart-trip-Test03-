@@ -1,0 +1,51 @@
+[
+  {
+    "id": "usr-admin",
+    "name": "Admin Thai Smart Trip",
+    "email": "admin@thaismarttrip.com",
+    "role": "admin",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "favorites": [
+      1,
+      51,
+      156,
+      168
+    ]
+  },
+  {
+    "id": "usr-demo",
+    "name": "Somchai Explorer",
+    "email": "user@thaismarttrip.com",
+    "role": "user",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+    "createdAt": "2026-02-15T00:00:00.000Z",
+    "favorites": [
+      1,
+      4,
+      11,
+      23,
+      109,
+      156,
+      183
+    ]
+  },
+  {
+    "id": "usr-1787327362856",
+    "name": "Hello",
+    "email": "systemconsultwork@gmail.com",
+    "role": "user",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+    "createdAt": "2026-08-21T15:49:22.856Z",
+    "favorites": []
+  },
+  {
+    "id": "usr-1787327402133",
+    "name": "s67122250013",
+    "email": "s67122250013@ssru.ac.th",
+    "role": "user",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+    "createdAt": "2026-08-21T15:50:02.133Z",
+    "favorites": []
+  }
+]

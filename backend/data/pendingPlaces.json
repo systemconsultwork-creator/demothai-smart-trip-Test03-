@@ -1,0 +1,102 @@
+[
+  {
+    "id": "pend-1",
+    "name": {
+      "th": "จุดชมวิวเขาคิชฌกูฏ",
+      "en": "Khao Khitchakut Viewpoint",
+      "zh": "奇察库山观景台"
+    },
+    "province": {
+      "th": "จันทบุรี",
+      "en": "Chanthaburi",
+      "zh": "尖竹汶"
+    },
+    "category": {
+      "th": "วัดและศาสนสถาน",
+      "en": "Temples & Culture",
+      "zh": "寺庙与宗教"
+    },
+    "categoryId": "temple",
+    "region": {
+      "th": "ภาคตะวันออก",
+      "en": "Eastern Thailand",
+      "zh": "泰国东部"
+    },
+    "regionId": "central",
+    "description": {
+      "th": "นมัสการรอยพระพุทธบาทพลวง และชมหินลูกบาตรศักดิ์สิทธิ์บนยอดเขาสูง",
+      "en": "Sacred footprint of the Buddha and gigantic balancing boulder atop the mountain.",
+      "zh": "朝拜神圣佛祖足印与险峻山巅平衡巨石。"
+    },
+    "rating": 4.8,
+    "reviewCount": 0,
+    "price": {
+      "th": "รถขึ้นเขา 100-200 บาท",
+      "en": "4WD Truck 100-200 THB",
+      "zh": "接驳四驱车 100-200 泰铢"
+    },
+    "hours": "เปิดตามเทศกาล (ม.ค. - เม.ย.)",
+    "lat": 12.8256,
+    "lng": 102.1642,
+    "images": [
+      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?auto=format&fit=crop&w=1000&q=80"
+    ],
+    "submittedBy": {
+      "userId": "usr-demo",
+      "userName": "Anan P.",
+      "email": "anan.travel@gmail.com"
+    },
+    "status": "pending",
+    "submittedAt": "2026-08-18T10:30:00.000Z"
+  },
+  {
+    "id": "pend-2",
+    "name": {
+      "th": "สะพานมอญ สังขละบุรี",
+      "en": "Mon Bridge, Sangkhlaburi",
+      "zh": "桑卡拉武里孟族木桥"
+    },
+    "province": {
+      "th": "กาญจนบุรี",
+      "en": "Kanchanaburi",
+      "zh": "北碧"
+    },
+    "category": {
+      "th": "ชุมชนและวิถีชีวิต",
+      "en": "Community & Lifestyle",
+      "zh": "社区与生活风情"
+    },
+    "categoryId": "lifestyle",
+    "region": {
+      "th": "ภาคกลาง",
+      "en": "Central Thailand",
+      "zh": "泰国中部"
+    },
+    "regionId": "central",
+    "description": {
+      "th": "สะพานไม้ยาวที่สุดในประเทศไทย ข้ามแม่น้ำซองกาเลีย สัมผัสวัฒนธรรมมอญ",
+      "en": "Thailand's longest handmade wooden bridge crossing the Song Kalia River.",
+      "zh": "横跨松加利亚河的泰国最长手工木桥，体验淳朴孟族文化。"
+    },
+    "rating": 4.9,
+    "reviewCount": 0,
+    "price": {
+      "th": "เข้าชมฟรี",
+      "en": "Free Entry",
+      "zh": "免费入场"
+    },
+    "hours": "24 ชั่วโมง",
+    "lat": 15.1436,
+    "lng": 98.4503,
+    "images": [
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80"
+    ],
+    "submittedBy": {
+      "userId": "usr-demo",
+      "userName": "Krit T.",
+      "email": "krit.explorer@gmail.com"
+    },
+    "status": "pending",
+    "submittedAt": "2026-08-18T14:15:00.000Z"
+  }
+]
