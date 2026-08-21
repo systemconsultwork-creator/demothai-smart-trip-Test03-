@@ -18,11 +18,16 @@ export const REGION_STYLES: Record<string, { name: { th: string; en: string; zh:
   north: { name: { th: 'ภาคเหนือ', en: 'Northern Thailand', zh: '泰国北部' }, color: '#059669', fill: '#A7F3D0', border: '#059669', badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200', text: 'text-emerald-700', centroid: { x: 160, y: 190 } },
   central: { name: { th: 'ภาคกลาง', en: 'Central Thailand', zh: '泰国中部' }, color: '#D97706', fill: '#FDE68A', border: '#D97706', badgeBg: 'bg-amber-50 text-amber-900 border-amber-200', text: 'text-amber-700', centroid: { x: 235, y: 490 } },
   northeast: { name: { th: 'ภาคอีสาน', en: 'Northeastern (Isan)', zh: '泰东北 (伊森)' }, color: '#EA580C', fill: '#FED7AA', border: '#EA580C', badgeBg: 'bg-orange-50 text-orange-900 border-orange-200', text: 'text-orange-700', centroid: { x: 440, y: 360 } },
-  east: { name: { th: 'ภาคตะวันออก', en: 'Eastern Thailand', zh: '泰国东部' }, color: '#9333EA', fill: '#E9D5FF', border: '#9333EA', badgeBg: 'bg-purple-50 text-purple-900 border-purple-200', text: 'text-purple-700', centroid: { x: 330, y: 580 } },
   south: { name: { th: 'ภาคใต้', en: 'Southern Thailand', zh: '泰国南部' }, color: '#0284C7', fill: '#BAE6FD', border: '#0284C7', badgeBg: 'bg-sky-50 text-sky-900 border-sky-200', text: 'text-sky-700', centroid: { x: 175, y: 880 } }
 };
 interface Cluster { id: string; x: number; y: number; places: Place[]; regionId: string; }
 type MappedPlace = Place & { svgX: number; svgY: number; effectiveRegion: string };
+
+const EASTERN_PROVINCES = ['chonburi','rayong','trat','chanthaburi','chachoengsao','sa kaeo','prachinburi'];
+const isEasternPlace = (place: Place) => {
+  const province = (place.province?.en || '').toLowerCase();
+  return place.regionId === 'east' || EASTERN_PROVINCES.some(name => province.includes(name));
+};
 
 export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelectPlace }) => {
   const { getLocalized, lang, activeRegion, setActiveRegion } = useApp();
@@ -36,16 +41,21 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
 
   useEffect(() => {
     if (places.length > 0) {
-      if (!selectedPlace || !places.some(p => p.id === selectedPlace.id)) setSelectedPlace(places[0]);
+      if (!selectedPlace || !places.some(p => p.id === selectedPlace.id) || isEasternPlace(selectedPlace)) {
+        const firstVisiblePlace = places.find(p => !isEasternPlace(p));
+        setSelectedPlace(firstVisiblePlace || null);
+      }
     } else setSelectedPlace(null);
   }, [places]);
 
   const regionCounts = useMemo(() => {
-    const counts: Record<string, number> = { north: 0, central: 0, northeast: 0, east: 0, south: 0 };
+    const counts: Record<string, number> = { north: 0, central: 0, northeast: 0, south: 0 };
     places.forEach(p => {
-      const province = (p.province?.en || '').toLowerCase();
-      const east = ['chonburi','rayong','trat','chanthaburi','chachoengsao','sa kaeo','prachinburi'].some(v => province.includes(v));
-      if (p.regionId === 'north') counts.north++; else if (p.regionId === 'northeast') counts.northeast++; else if (p.regionId === 'south') counts.south++; else if (east) counts.east++; else counts.central++;
+      if (isEasternPlace(p)) return;
+      if (p.regionId === 'north') counts.north++;
+      else if (p.regionId === 'northeast') counts.northeast++;
+      else if (p.regionId === 'south') counts.south++;
+      else counts.central++;
     });
     return counts;
   }, [places]);
@@ -101,15 +111,13 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
   const handleTouchEnd = () => setIsDragging(false);
 
   const handleRegionClick = (regId: string) => {
-    if (activeRegion === regId || (regId === 'east' && activeRegion === 'central')) setActiveRegion('all');
-    else setActiveRegion(regId === 'east' ? 'central' : regId);
+    if (activeRegion === regId) setActiveRegion('all');
+    else setActiveRegion(regId);
   };
 
-  const mappedPlaces = useMemo<MappedPlace[]>(() => places.map(place => {
+  const mappedPlaces = useMemo<MappedPlace[]>(() => places.filter(place => !isEasternPlace(place)).map(place => {
     const { x, y } = projectGeoToSvg(place.lat, place.lng);
-    const province = (place.province?.en || '').toLowerCase();
-    const east = ['chonburi','rayong','trat','chanthaburi'].some(v => province.includes(v));
-    return { ...place, svgX: x, svgY: y, effectiveRegion: east ? 'east' : place.regionId };
+    return { ...place, svgX: x, svgY: y, effectiveRegion: place.regionId };
   }), [places]);
 
   const { clusters, singleMarkers } = useMemo(() => {
@@ -132,8 +140,8 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
     return { clusters: clusterList, singleMarkers: singles };
   }, [mappedPlaces, zoom]);
 
-  const visibleClusters = useMemo(() => activeRegion === 'all' ? clusters : clusters.filter(c => c.regionId === activeRegion || (activeRegion === 'central' && c.regionId === 'east')), [clusters, activeRegion]);
-  const visibleSingleMarkers = useMemo(() => activeRegion === 'all' ? singleMarkers : singleMarkers.filter(p => p.effectiveRegion === activeRegion || (activeRegion === 'central' && p.effectiveRegion === 'east')), [singleMarkers, activeRegion]);
+  const visibleClusters = useMemo(() => activeRegion === 'all' ? clusters : clusters.filter(c => c.regionId === activeRegion), [clusters, activeRegion]);
+  const visibleSingleMarkers = useMemo(() => activeRegion === 'all' ? singleMarkers : singleMarkers.filter(p => p.effectiveRegion === activeRegion), [singleMarkers, activeRegion]);
 
   return (
     <div id="thailand-interactive-map-section" className="relative w-full rounded-3xl bg-white border border-slate-200/90 shadow-xl overflow-hidden flex flex-col lg:flex-row">
@@ -154,7 +162,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
           <svg viewBox={`0 0 ${THAILAND_MAP_PROJECTION.width} ${THAILAND_MAP_PROJECTION.height}`} className="w-[360px] sm:w-[440px] md:w-[490px] lg:w-[530px] h-auto overflow-visible" style={{ maxHeight: '94%' }}>
             <defs><filter id="thailand-coastal-relief" x="-8%" y="-8%" width="120%" height="120%"><feDropShadow dx="2" dy="5" stdDeviation="6" floodColor="#0F766E" floodOpacity="0.12" /><feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#0F172A" floodOpacity="0.08" /></filter></defs>
             <g id="static-thailand-provinces-layer" filter="url(#thailand-coastal-relief)" pointerEvents="none" className="pointer-events-none select-none">
-              {THAILAND_PROVINCES.map(prov => { const style = REGION_STYLES[prov.region] || REGION_STYLES.central; return <path key={prov.name} d={prov.path} fill={style.fill} stroke="#FFFFFF" strokeWidth="0.75" strokeLinejoin="round" strokeLinecap="round" opacity={1} pointerEvents="none" />; })}
+              {THAILAND_PROVINCES.filter(prov => prov.region !== 'east').map(prov => { const style = REGION_STYLES[prov.region] || REGION_STYLES.central; return <path key={prov.name} d={prov.path} fill={style.fill} stroke="#FFFFFF" strokeWidth="0.75" strokeLinejoin="round" strokeLinecap="round" opacity={1} pointerEvents="none" />; })}
             </g>
             <g id="interactive-destination-markers-layer" pointerEvents="auto">
               {visibleClusters.map(cluster => { const style = REGION_STYLES[cluster.regionId] || REGION_STYLES.central; return <g key={cluster.id} transform={`translate(${cluster.x}, ${cluster.y})`} className="cursor-pointer" onClick={e => { e.stopPropagation(); if (hasDraggedRef.current) return; if (cluster.places.length) setSelectedPlace(cluster.places[0]); }}><circle r="13" fill="transparent" /><circle r="11" fill={style.color} stroke="#FFFFFF" strokeWidth="2" pointerEvents="none" /><text textAnchor="middle" dy="3.5" fill="#FFFFFF" fontSize="9" fontWeight="800" fontFamily="sans-serif" pointerEvents="none">{cluster.places.length}</text></g>; })}
@@ -167,7 +175,6 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({ places, onSelect
           <div className="flex items-start justify-between gap-2">
             {(['north','northeast'] as const).map(reg => { const style = REGION_STYLES[reg]; return <button key={reg} onClick={() => handleRegionClick(reg)} className="pointer-events-auto flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-white/95 border border-slate-200/90 shadow-md text-left"><span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: style.color }} /><div><p className="text-[11px] font-black text-slate-900">{lang === 'th' ? style.name.th : lang === 'zh' ? style.name.zh : style.name.en}</p><p className="text-[10px] font-semibold" style={{ color: style.color }}>{regionCounts[reg]} {lang === 'th' ? 'สถานที่' : lang === 'zh' ? '处景点' : 'places'}</p></div></button>; })}
           </div>
-          <div className="flex justify-end pr-2 sm:pr-6"><button onClick={() => handleRegionClick('east')} className="pointer-events-auto flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-white/95 border border-slate-200/90 shadow-md text-left"><span className="w-3 h-3 rounded-full bg-purple-500 shrink-0" /><div><p className="text-[11px] font-black text-slate-900">{lang === 'th' ? 'ภาคตะวันออก' : lang === 'zh' ? '泰国东部' : 'Eastern Thailand'}</p><p className="text-[10px] font-semibold text-purple-700">{regionCounts.east} {lang === 'th' ? 'สถานที่' : lang === 'zh' ? '处景点' : 'places'}</p></div></button></div>
           <div className="flex items-end justify-between gap-2"><button onClick={() => handleRegionClick('south')} className="pointer-events-auto flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-white/95 border border-slate-200/90 shadow-md text-left"><span className="w-3 h-3 rounded-full bg-sky-500 shrink-0" /><div><p className="text-[11px] font-black text-slate-900">{lang === 'th' ? 'ภาคใต้' : lang === 'zh' ? '泰国南部' : 'Southern Thailand'}</p><p className="text-[10px] font-semibold text-sky-700">{regionCounts.south} {lang === 'th' ? 'สถานที่' : lang === 'zh' ? '处景点' : 'places'}</p></div></button><button onClick={() => handleRegionClick('central')} className="pointer-events-auto flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-white/95 border border-slate-200/90 shadow-md text-left"><span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" /><div><p className="text-[11px] font-black text-slate-900">{lang === 'th' ? 'ภาคกลาง' : lang === 'zh' ? '泰国中部' : 'Central Thailand'}</p><p className="text-[10px] font-semibold text-amber-700">{regionCounts.central} {lang === 'th' ? 'สถานที่' : lang === 'zh' ? '处景点' : 'places'}</p></div></button></div>
         </div>
 
