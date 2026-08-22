@@ -80,26 +80,21 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
   });
 }
 
-// Health
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'thai-smart-trip-api', timestamp: new Date().toISOString() });
 });
 
-// Categories
 app.get('/api/categories', (req, res) => {
   res.json(readJsonFile('categories.json'));
 });
 
-// Provinces
 app.get('/api/provinces', (req, res) => {
   res.json(readJsonFile('provinces.json'));
 });
 
-// Places list
 app.get('/api/places', (req, res) => {
   const places = readJsonFile('places.json');
   const { q, category, region, province, minRating, sort, featured, popular, recommended, limit } = req.query;
-
   let filtered = [...places];
 
   if (q && typeof q === 'string') {
@@ -120,20 +115,16 @@ app.get('/api/places', (req, res) => {
   if (category && typeof category === 'string' && category !== 'all') {
     filtered = filtered.filter((p: any) => p.categoryId === category);
   }
-
   if (region && typeof region === 'string' && region !== 'all') {
     filtered = filtered.filter((p: any) => p.regionId === region);
   }
-
   if (province && typeof province === 'string' && province !== 'all') {
     filtered = filtered.filter((p: any) => p.province?.th === province || p.province?.en === province);
   }
-
   if (minRating) {
     const min = parseFloat(minRating as string);
     if (!isNaN(min)) filtered = filtered.filter((p: any) => (p.rating || 0) >= min);
   }
-
   if (featured === 'true') filtered = filtered.filter((p: any) => p.featured);
   if (popular === 'true') filtered = filtered.filter((p: any) => p.popular);
   if (recommended === 'true') filtered = filtered.filter((p: any) => p.recommended);
@@ -154,7 +145,6 @@ app.get('/api/places', (req, res) => {
   res.json({ total: filtered.length, places: filtered });
 });
 
-// Single place
 app.get('/api/places/:id', (req, res) => {
   const places = readJsonFile('places.json');
   const placeId = parseInt(req.params.id, 10);
@@ -163,7 +153,6 @@ app.get('/api/places/:id', (req, res) => {
   res.json(place);
 });
 
-// Admin add place
 app.post('/api/places', requireAdmin, (req, res) => {
   const googleMapsUrl = getGoogleMapsUrl(req.body?.googleMapsUrl);
   if (!isGoogleMapsUrl(googleMapsUrl)) {
@@ -172,7 +161,6 @@ app.post('/api/places', requireAdmin, (req, res) => {
 
   const places = readJsonFile('places.json');
   const newId = places.length > 0 ? Math.max(...places.map((p: any) => p.id || 0)) + 1 : 1;
-
   const newPlace = {
     id: newId,
     ...req.body,
@@ -187,27 +175,29 @@ app.post('/api/places', requireAdmin, (req, res) => {
   res.status(201).json(newPlace);
 });
 
-// Admin update place
 app.put('/api/places/:id', requireAdmin, (req, res) => {
   const places = readJsonFile('places.json');
   const placeId = parseInt(req.params.id, 10);
   const index = places.findIndex((p: any) => p.id === placeId);
-
   if (index === -1) return res.status(404).json({ error: 'Place not found' });
 
   const submittedGoogleMapsUrl = req.body?.googleMapsUrl;
+  const existingGoogleMapsUrl = getGoogleMapsUrl(
+    places[index].googleMapsUrl || places[index].location?.map_url
+  );
   const googleMapsUrl = submittedGoogleMapsUrl === undefined
-    ? getGoogleMapsUrl(places[index].googleMapsUrl)
+    ? existingGoogleMapsUrl
     : getGoogleMapsUrl(submittedGoogleMapsUrl);
 
-  if (!isGoogleMapsUrl(googleMapsUrl)) {
+  // Existing legacy places may still have no map URL. Do not break editing them.
+  if (googleMapsUrl && !isGoogleMapsUrl(googleMapsUrl)) {
     return res.status(400).json({ error: 'A valid Google Maps URL is required.' });
   }
 
   places[index] = {
     ...places[index],
     ...req.body,
-    googleMapsUrl,
+    ...(googleMapsUrl ? { googleMapsUrl } : {}),
     id: placeId
   };
 
@@ -215,7 +205,6 @@ app.put('/api/places/:id', requireAdmin, (req, res) => {
   res.json(places[index]);
 });
 
-// Admin delete place
 app.delete('/api/places/:id', requireAdmin, (req, res) => {
   const places = readJsonFile('places.json');
   const placeId = parseInt(req.params.id, 10);
@@ -224,7 +213,6 @@ app.delete('/api/places/:id', requireAdmin, (req, res) => {
   res.json({ success: true, message: `Place ${placeId} deleted successfully` });
 });
 
-// Reviews
 app.get('/api/reviews', (req, res) => {
   const reviews = readJsonFile('reviews.json');
   const { placeId, userId } = req.query;
@@ -243,7 +231,6 @@ app.get('/api/reviews', (req, res) => {
 app.post('/api/reviews', (req, res) => {
   const reviews = readJsonFile('reviews.json');
   const { placeId, rating, comment, userName, userId, userAvatar, language } = req.body;
-
   if (!placeId || !rating || !comment) {
     return res.status(400).json({ error: 'Missing required review fields' });
   }
@@ -278,13 +265,11 @@ app.post('/api/reviews', (req, res) => {
 
 app.delete('/api/reviews/:id', (req, res) => {
   const reviews = readJsonFile('reviews.json');
-  const reviewId = req.params.id;
-  const filtered = reviews.filter((r: any) => r.id !== reviewId);
+  const filtered = reviews.filter((r: any) => r.id !== req.params.id);
   writeJsonFile('reviews.json', filtered);
   res.json({ success: true });
 });
 
-// User submissions
 app.get('/api/submissions', (req, res) => {
   const submissions = readJsonFile('pendingPlaces.json');
   const { userId } = req.query;
@@ -313,19 +298,18 @@ app.post('/api/submissions', (req, res) => {
   res.status(201).json(newSubmission);
 });
 
-// Approve submission -> move into places.json while preserving Google Maps URL
 app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
   const submissions = readJsonFile('pendingPlaces.json');
   const submissionId = req.params.id;
   const subIndex = submissions.findIndex((s: any) => s.id === submissionId);
-
   if (subIndex === -1) return res.status(404).json({ error: 'Submission not found' });
 
   const sub = submissions[subIndex];
-  const googleMapsUrl = getGoogleMapsUrl(sub.googleMapsUrl);
+  const googleMapsUrl = getGoogleMapsUrl(sub.googleMapsUrl || sub.location?.map_url);
 
-  if (!isGoogleMapsUrl(googleMapsUrl)) {
-    return res.status(400).json({ error: 'Submission does not contain a valid Google Maps URL.' });
+  // New submissions always have a URL. Legacy demo submissions may not.
+  if (googleMapsUrl && !isGoogleMapsUrl(googleMapsUrl)) {
+    return res.status(400).json({ error: 'Submission contains an invalid Google Maps URL.' });
   }
 
   const places = readJsonFile('places.json');
@@ -347,7 +331,7 @@ app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
     lat: sub.lat || 13.7563,
     lng: sub.lng || 100.5018,
     images: sub.images?.length > 0 ? sub.images : ['https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=1000&q=80'],
-    googleMapsUrl,
+    ...(googleMapsUrl ? { googleMapsUrl } : {}),
     address: {
       th: `${sub.province?.th || ''}, ประเทศไทย`,
       en: `${sub.province?.en || ''}, Thailand`,
@@ -363,7 +347,7 @@ app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
 
   submissions[subIndex] = {
     ...submissions[subIndex],
-    googleMapsUrl,
+    ...(googleMapsUrl ? { googleMapsUrl } : {}),
     status: 'approved'
   };
   writeJsonFile('pendingPlaces.json', submissions);
@@ -371,12 +355,10 @@ app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
   res.json({ success: true, place: approvedPlace });
 });
 
-// Reject submission
 app.post('/api/submissions/:id/reject', requireAdmin, (req, res) => {
   const submissions = readJsonFile('pendingPlaces.json');
   const submissionId = req.params.id;
   const subIndex = submissions.findIndex((s: any) => s.id === submissionId);
-
   if (subIndex === -1) return res.status(404).json({ error: 'Submission not found' });
 
   submissions[subIndex].status = 'rejected';
@@ -384,7 +366,6 @@ app.post('/api/submissions/:id/reject', requireAdmin, (req, res) => {
   res.json({ success: true, message: 'Submission rejected' });
 });
 
-// Admin stats
 app.get('/api/admin/stats', requireAdmin, (req, res) => {
   const places = readJsonFile('places.json');
   const submissions = readJsonFile('pendingPlaces.json');
@@ -408,7 +389,6 @@ app.get('/api/admin/stats', requireAdmin, (req, res) => {
   });
 });
 
-// Users and auth simulation
 app.get('/api/users', (req, res) => {
   res.json(readJsonFile('users.json'));
 });
@@ -440,7 +420,6 @@ app.post('/api/auth/register', (req, res) => {
   const { name, email, role } = req.body;
   const users = readJsonFile('users.json');
   const existing = users.find((u: any) => u.email === email);
-
   if (existing) return res.status(400).json({ error: 'Email already registered' });
 
   const newUser = {
@@ -458,18 +437,15 @@ app.post('/api/auth/register', (req, res) => {
   res.status(201).json({ user: newUser, token: `jwt-token-${newUser.id}-${Date.now()}` });
 });
 
-// Toggle favorite
 app.post('/api/users/favorite', (req, res) => {
   const { userId, placeId } = req.body;
   const users = readJsonFile('users.json');
   const userIndex = users.findIndex((u: any) => u.id === userId);
-
   if (userIndex === -1) return res.status(404).json({ error: 'User not found' });
 
   const user = users[userIndex];
   const pId = parseInt(placeId, 10);
   const favs = new Set(user.favorites || []);
-
   if (favs.has(pId)) favs.delete(pId);
   else favs.add(pId);
 
@@ -479,7 +455,6 @@ app.post('/api/users/favorite', (req, res) => {
   res.json({ favorites: user.favorites });
 });
 
-// Server start & Vite
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
