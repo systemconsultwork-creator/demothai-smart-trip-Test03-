@@ -5,9 +5,7 @@ import { isAdminEmail } from '../config/admin';
 
 function getAuthHeaders(includeContentType = true): Record<string, string> {
   const headers: Record<string, string> = {};
-  if (includeContentType) {
-    headers['Content-Type'] = 'application/json';
-  }
+  if (includeContentType) headers['Content-Type'] = 'application/json';
   try {
     const savedUser = localStorage.getItem('tst_user');
     if (savedUser) {
@@ -55,7 +53,6 @@ function filterPlaces(places: Place[], params: {
   limit?: number;
 }): Place[] {
   let filtered = [...places];
-
   if (params.q) {
     const query = params.q.toLowerCase().trim();
     filtered = filtered.filter((p: any) => {
@@ -68,50 +65,29 @@ function filterPlaces(places: Place[], params: {
       return values.some(value => String(value || '').toLowerCase().includes(query));
     });
   }
-
-  if (params.category && params.category !== 'all') {
-    filtered = filtered.filter(p => p.categoryId === params.category);
-  }
-  if (params.region && params.region !== 'all') {
-    filtered = filtered.filter(p => p.regionId === params.region);
-  }
+  if (params.category && params.category !== 'all') filtered = filtered.filter(p => p.categoryId === params.category);
+  if (params.region && params.region !== 'all') filtered = filtered.filter(p => p.regionId === params.region);
   if (params.province && params.province !== 'all') {
     filtered = filtered.filter((p: any) =>
       p.province?.th === params.province || p.province?.en === params.province || p.province?.zh === params.province
     );
   }
-  if (params.minRating) {
-    filtered = filtered.filter(p => (p.rating || 0) >= params.minRating!);
-  }
+  if (params.minRating) filtered = filtered.filter(p => (p.rating || 0) >= params.minRating!);
   if (params.featured) filtered = filtered.filter(p => Boolean((p as any).featured));
   if (params.popular) filtered = filtered.filter(p => Boolean((p as any).popular));
   if (params.recommended) filtered = filtered.filter(p => Boolean((p as any).recommended));
-
-  if (params.sort === 'rating') {
-    filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  } else if (params.sort === 'popular') {
-    filtered.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
-  } else if (params.sort === 'name') {
-    filtered.sort((a, b) => (a.name?.th || '').localeCompare(b.name?.th || ''));
-  }
-
+  if (params.sort === 'rating') filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  else if (params.sort === 'popular') filtered.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+  else if (params.sort === 'name') filtered.sort((a, b) => (a.name?.th || '').localeCompare(b.name?.th || ''));
   if (params.limit && params.limit > 0) filtered = filtered.slice(0, params.limit);
   return filtered;
 }
 
 export const api = {
-  // Places — Firestore is now the source of truth.
+  // Firestore is the source of truth for places.
   async getPlaces(params: {
-    q?: string;
-    category?: string;
-    region?: string;
-    province?: string;
-    minRating?: number;
-    sort?: 'rating' | 'popular' | 'name';
-    featured?: boolean;
-    popular?: boolean;
-    recommended?: boolean;
-    limit?: number;
+    q?: string; category?: string; region?: string; province?: string; minRating?: number;
+    sort?: 'rating' | 'popular' | 'name'; featured?: boolean; popular?: boolean; recommended?: boolean; limit?: number;
   } = {}): Promise<{ total: number; places: Place[] }> {
     const places = await getFirestorePlaces();
     const filtered = filterPlaces(places, params);
@@ -130,14 +106,7 @@ export const api = {
     const db = requireFirebaseAdmin();
     const places = await getFirestorePlaces();
     const newId = places.length > 0 ? Math.max(...places.map(p => Number(p.id) || 0)) + 1 : 1;
-    const newPlace = {
-      ...place,
-      id: newId,
-      rating: Number(place.rating ?? 5),
-      reviewCount: Number(place.reviewCount ?? 0),
-      createdAt: new Date().toISOString(),
-    } as Place;
-
+    const newPlace = { ...place, id: newId, rating: Number(place.rating ?? 5), reviewCount: Number(place.reviewCount ?? 0), createdAt: new Date().toISOString() } as Place;
     await setDoc(doc(db, 'places', String(newId)), newPlace);
     return newPlace;
   },
@@ -147,38 +116,20 @@ export const api = {
     const placeRef = doc(db, 'places', String(id));
     const snapshot = await getDoc(placeRef);
     if (!snapshot.exists()) throw new Error('Place not found');
-
-    const updatedPlace = {
-      ...snapshot.data(),
-      ...place,
-      id,
-    } as Place;
-
+    const updatedPlace = { ...snapshot.data(), ...place, id } as Place;
     await setDoc(placeRef, updatedPlace);
     return updatedPlace;
   },
 
-  async deletePlace(id: number): Promise<{
-    success: boolean;
-    message: string;
-    submissionUpdated?: boolean;
-    deletedAt?: string;
-  }> {
+  async deletePlace(id: number): Promise<{ success: boolean; message: string; submissionUpdated?: boolean; deletedAt?: string }> {
     const db = requireFirebaseAdmin();
     const placeRef = doc(db, 'places', String(id));
     const snapshot = await getDoc(placeRef);
     if (!snapshot.exists()) throw new Error('Place not found');
-
     await deleteDoc(placeRef);
-    const deletedAt = new Date().toISOString();
-    return {
-      success: true,
-      message: `Place ${id} deleted successfully`,
-      deletedAt,
-    };
+    return { success: true, message: `Place ${id} deleted successfully`, deletedAt: new Date().toISOString() };
   },
 
-  // Categories & Provinces remain configuration data for now.
   async getCategories(): Promise<Category[]> {
     const res = await fetch('/api/categories');
     if (!res.ok) throw new Error('Failed to fetch categories');
@@ -191,44 +142,26 @@ export const api = {
     return res.json();
   },
 
-  // Reviews
   async getReviews(params: { placeId?: number; userId?: string } = {}): Promise<Review[]> {
     const query = new URLSearchParams();
     if (params.placeId) query.append('placeId', params.placeId.toString());
     if (params.userId) query.append('userId', params.userId);
-
     const res = await fetch(`/api/reviews?${query.toString()}`);
     if (!res.ok) throw new Error('Failed to fetch reviews');
     return res.json();
   },
 
-  async createReview(data: {
-    placeId: number;
-    rating: number;
-    comment: string;
-    userName?: string;
-    userId?: string;
-    userAvatar?: string;
-    language?: string;
-  }): Promise<Review> {
-    const res = await fetch('/api/reviews', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+  async createReview(data: { placeId: number; rating: number; comment: string; userName?: string; userId?: string; userAvatar?: string; language?: string }): Promise<Review> {
+    const res = await fetch('/api/reviews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     if (!res.ok) throw new Error('Failed to submit review');
     return res.json();
   },
 
   async deleteReview(id: string): Promise<void> {
-    const res = await fetch(`/api/reviews/${id}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders(false),
-    });
+    const res = await fetch(`/api/reviews/${id}`, { method: 'DELETE', headers: getAuthHeaders(false) });
     if (!res.ok) throw new Error('Failed to delete review');
   },
 
-  // Submissions (Pending Places)
   async getSubmissions(userId?: string): Promise<PendingPlace[]> {
     const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
     const res = await fetch(`/api/submissions${query}`);
@@ -237,43 +170,37 @@ export const api = {
   },
 
   async submitPlace(data: Partial<PendingPlace>): Promise<PendingPlace> {
-    const res = await fetch('/api/submissions', {
-      method: 'POST',
-      headers: getAuthHeaders(true),
-      body: JSON.stringify(data),
-    });
+    const res = await fetch('/api/submissions', { method: 'POST', headers: getAuthHeaders(true), body: JSON.stringify(data) });
     if (!res.ok) throw new Error('Failed to submit place');
     return res.json();
   },
 
   async approveSubmission(id: string): Promise<{ success: boolean; place: Place }> {
-    const res = await fetch(`/api/submissions/${id}/approve`, {
-      method: 'POST',
-      headers: getAuthHeaders(false),
-    });
+    const res = await fetch(`/api/submissions/${id}/approve`, { method: 'POST', headers: getAuthHeaders(false) });
     if (!res.ok) throw new Error('Failed to approve submission');
-
     const result = await res.json() as { success: boolean; place: Place };
-    if (!result?.place?.id) throw new Error('Approve succeeded but no place was returned.');
+    if (!result?.place) throw new Error('Approve succeeded but no place was returned.');
 
-    // The approved place must be written to Firestore immediately.
-    // This keeps the public Search/Discover pages and Admin Places view on the
-    // same source of truth, without requiring npm run sync:places.
     const db = requireFirebaseAdmin();
-    await setDoc(doc(db, 'places', String(result.place.id)), result.place);
+    const existingPlaces = await getFirestorePlaces();
+    const usedIds = new Set(existingPlaces.map(place => Number(place.id)).filter(Number.isFinite));
+    const backendId = Number(result.place.id);
+    const nextId = usedIds.has(backendId)
+      ? (existingPlaces.length > 0 ? Math.max(...existingPlaces.map(place => Number(place.id) || 0)) + 1 : 1)
+      : backendId;
 
-    return result;
+    const approvedPlace = { ...result.place, id: nextId } as Place;
+    await setDoc(doc(db, 'places', String(nextId)), approvedPlace);
+
+    return { ...result, place: approvedPlace };
   },
 
   async rejectSubmission(id: string): Promise<void> {
-    const res = await fetch(`/api/submissions/${id}/reject`, {
-      method: 'POST',
-      headers: getAuthHeaders(false),
-    });
+    const res = await fetch(`/api/submissions/${id}/reject`, { method: 'POST', headers: getAuthHeaders(false) });
     if (!res.ok) throw new Error('Failed to reject submission');
   },
 
-  // Admin Stats — place counts always come from Firestore.
+  // Place counts and regional statistics come from Firestore, never places.json.
   async getAdminStats(): Promise<{
     totalPlaces: number;
     pendingSubmissions: number;
@@ -282,60 +209,39 @@ export const api = {
     regionalStats: { north: number; central: number; northeast: number; south: number };
   }> {
     const [res, firestorePlaces] = await Promise.all([
-      fetch('/api/admin/stats', {
-        headers: getAuthHeaders(false),
-      }),
+      fetch('/api/admin/stats', { headers: getAuthHeaders(false) }),
       getFirestorePlaces(),
     ]);
-
     if (!res.ok) throw new Error('Failed to fetch admin stats');
     const backendStats = await res.json();
-
-    const regionalStats = {
-      north: firestorePlaces.filter(place => place.regionId === 'north').length,
-      central: firestorePlaces.filter(place => place.regionId === 'central').length,
-      northeast: firestorePlaces.filter(place => place.regionId === 'northeast').length,
-      south: firestorePlaces.filter(place => place.regionId === 'south').length,
-    };
-
     return {
       ...backendStats,
       totalPlaces: firestorePlaces.length,
-      regionalStats,
+      regionalStats: {
+        north: firestorePlaces.filter(place => place.regionId === 'north').length,
+        central: firestorePlaces.filter(place => place.regionId === 'central').length,
+        northeast: firestorePlaces.filter(place => place.regionId === 'northeast').length,
+        south: firestorePlaces.filter(place => place.regionId === 'south').length,
+      },
     };
   },
 
-  // Auth & Users
   async login(email: string): Promise<{ user: User; token: string }> {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
+    const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
     if (!res.ok) throw new Error('Failed to login');
     return res.json();
   },
 
   async register(name: string, email: string, role?: 'admin' | 'user'): Promise<{ user: User; token: string }> {
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, role }),
-    });
+    const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, role }) });
     if (!res.ok) throw new Error('Failed to register');
     return res.json();
   },
 
-  async logout(): Promise<void> {
-    return Promise.resolve();
-  },
+  async logout(): Promise<void> { return Promise.resolve(); },
 
   async toggleFavorite(userId: string, placeId: number): Promise<{ favorites: number[] }> {
-    const res = await fetch('/api/users/favorite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, placeId }),
-    });
+    const res = await fetch('/api/users/favorite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, placeId }) });
     if (!res.ok) throw new Error('Failed to update favorite');
     return res.json();
   }
