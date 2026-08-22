@@ -75,12 +75,25 @@ export const api = {
     return res.json();
   },
 
-  async deletePlace(id: number): Promise<void> {
+  async deletePlace(id: number): Promise<{
+    success: boolean;
+    message: string;
+    submissionUpdated?: boolean;
+    deletedAt?: string;
+  }> {
     const res = await fetch(`/api/places/${id}`, {
       method: 'DELETE',
       headers: getAuthHeaders(false),
     });
-    if (!res.ok) throw new Error('Failed to delete place');
+    if (!res.ok) {
+      let message = 'Failed to delete place';
+      try {
+        const body = await res.json();
+        if (body?.error) message = body.error;
+      } catch (e) {}
+      throw new Error(message);
+    }
+    return res.json();
   },
 
   // Categories & Provinces
@@ -135,7 +148,7 @@ export const api = {
 
   // Submissions (Pending Places)
   async getSubmissions(userId?: string): Promise<PendingPlace[]> {
-    const query = userId ? `?userId=${userId}` : '';
+    const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
     const res = await fetch(`/api/submissions${query}`);
     if (!res.ok) throw new Error('Failed to fetch submissions');
     return res.json();
@@ -205,7 +218,6 @@ export const api = {
   },
 
   async logout(): Promise<void> {
-    // Client-side logout clears session
     return Promise.resolve();
   },
 
