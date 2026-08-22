@@ -179,8 +179,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return;
     }
 
-    const isFav = favorites.includes(placeId);
-    const newFavs = isFav ? favorites.filter(id => id !== placeId) : [...favorites, placeId];
+    const previousFavorites = [...favorites];
+    const isFav = previousFavorites.includes(placeId);
+    const newFavs = isFav ? previousFavorites.filter(id => id !== placeId) : [...previousFavorites, placeId];
     
     // อัปเดต UI ทันทีแบบ Optimistic Update
     setFavorites(newFavs);
@@ -194,16 +195,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await updateDoc(userRef, {
         favorites: isFav ? arrayRemove(placeId) : arrayUnion(placeId)
       });
+
+      showToast(
+        isFav 
+          ? (lang === 'th' ? 'ลบออกจากรายการโปรดแล้ว' : lang === 'zh' ? '已从收藏夹移除' : 'Removed from favorites')
+          : (lang === 'th' ? 'บันทึกในรายการโปรดแล้ว' : lang === 'zh' ? '已添加至收藏夹' : 'Added to favorites'),
+        'success'
+      );
     } catch (err) {
       console.error('Failed to sync favorite on Firebase', err);
-    }
 
-    showToast(
-      isFav 
-        ? (lang === 'th' ? 'ลบออกจากรายการโปรดแล้ว' : lang === 'zh' ? '已从收藏夹移除' : 'Removed from favorites')
-        : (lang === 'th' ? 'บันทึกในรายการโปรดแล้ว' : lang === 'zh' ? '已添加至收藏夹' : 'Added to favorites'),
-      'success'
-    );
+      // Roll back UI, user state, and local cache to the last known Firestore state.
+      setFavorites(previousFavorites);
+      const rollbackUser = { ...user, favorites: previousFavorites };
+      setUser(rollbackUser);
+      localStorage.setItem('tst_user', JSON.stringify(rollbackUser));
+
+      showToast(
+        lang === 'th'
+          ? 'ไม่สามารถบันทึกรายการโปรดได้ กรุณาลองใหม่อีกครั้ง'
+          : lang === 'zh'
+          ? '无法保存收藏，请稍后再试'
+          : 'Unable to save favorite. Please try again.',
+        'error'
+      );
+    }
   };
 
   const logout = async () => {
