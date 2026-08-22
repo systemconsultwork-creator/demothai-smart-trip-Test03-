@@ -189,7 +189,6 @@ app.put('/api/places/:id', requireAdmin, (req, res) => {
     ? existingGoogleMapsUrl
     : getGoogleMapsUrl(submittedGoogleMapsUrl);
 
-  // Existing legacy places may still have no map URL. Do not break editing them.
   if (googleMapsUrl && !isGoogleMapsUrl(googleMapsUrl)) {
     return res.status(400).json({ error: 'A valid Google Maps URL is required.' });
   }
@@ -208,9 +207,72 @@ app.put('/api/places/:id', requireAdmin, (req, res) => {
 app.delete('/api/places/:id', requireAdmin, (req, res) => {
   const places = readJsonFile('places.json');
   const placeId = parseInt(req.params.id, 10);
+  const place = places.find((p: any) => p.id === placeId);
+
+  if (!place) {
+    return res.status(404).json({ error: 'Place not found' });
+  }
+
   const filtered = places.filter((p: any) => p.id !== placeId);
-  writeJsonFile('places.json', filtered);
-  res.json({ success: true, message: `Place ${placeId} deleted successfully` });
+  const placesWritten = writeJsonFile('places.json', filtered);
+
+  if (!placesWritten) {
+    return res.status(500).json({ error: 'Failed to update places.json' });
+  }
+
+  // Keep the original user submission as an audit/history record and mark it
+  // as deleted instead of removing it from pendingPlaces.json.
+  const submissions = readJsonFile('pendingPlaces.json');
+  const placeGoogleMapsUrl = getGoogleMapsUrl(place.googleMapsUrl || place.location?.map_url);
+  const adminEmail = typeof req.headers['x-user-email'] === 'string'
+    ? req.headers['x-user-email']
+    : 'admin';
+  const deletedAt = new Date().toISOString();
+  const adminMessage = 'สถานที่นี้ถูกลบโดยผู้ดูแลระบบ';
+
+  let matchedSubmission = false;
+  const updatedSubmissions = submissions.map((submission: any) => {
+    const sameSourceId = submission.approvedPlaceId === placeId;
+    const samePlaceSource = submission.id === place.sourceSubmissionId;
+    const sameGoogleMapsUrl = Boolean(
+      placeGoogleMapsUrl &&
+      getGoogleMapsUrl(submission.googleMapsUrl || submission.location?.map_url) === placeGoogleMapsUrl
+    );
+    const sameName = Boolean(
+      place.name?.th && submission.name?.th && place.name.th === submission.name.th
+    );
+
+    if (sameSourceId || samePlaceSource || sameGoogleMapsUrl || sameName) {
+      matchedSubmission = true;
+      return {
+        ...submission,
+        status: 'deleted',
+        deletedAt,
+        deletedPlaceId: placeId,
+        deletedBy: adminEmail,
+        adminMessage,
+        approvedPlaceId: placeId
+      };
+    }
+
+    return submission;
+  });
+
+  if (matchedSubmission) {
+    const submissionsWritten = writeJsonFile('pendingPlaces.json', updatedSubmissions);
+    if (!submissionsWritten) {
+      return res.status(500).json({
+        error: 'Place was removed, but pendingPlaces.json could not be updated.'
+      });
+    }
+  }
+
+  res.json({
+    success: true,
+    message: `Place ${placeId} deleted successfully`,
+    submissionUpdated: matchedSubmission,
+    deletedAt
+  });
 });
 
 app.get('/api/reviews', (req, res) => {
@@ -307,7 +369,6 @@ app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
   const sub = submissions[subIndex];
   const googleMapsUrl = getGoogleMapsUrl(sub.googleMapsUrl || sub.location?.map_url);
 
-  // New submissions always have a URL. Legacy demo submissions may not.
   if (googleMapsUrl && !isGoogleMapsUrl(googleMapsUrl)) {
     return res.status(400).json({ error: 'Submission contains an invalid Google Maps URL.' });
   }
@@ -332,6 +393,7 @@ app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
     lng: sub.lng || 100.5018,
     images: sub.images?.length > 0 ? sub.images : ['https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=1000&q=80'],
     ...(googleMapsUrl ? { googleMapsUrl } : {}),
+    sourceSubmissionId: submissionId,
     address: {
       th: `${sub.province?.th || ''}, ประเทศไทย`,
       en: `${sub.province?.en || ''}, Thailand`,
@@ -343,14 +405,24 @@ app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
   };
 
   places.push(approvedPlace);
-  writeJsonFile('places.json', places);
+  const placesWritten = writeJsonFile('places.json', places);
+  if (!placesWritten) {
+    return res.status(500).json({ error: 'Failed to write approved place to places.json' });
+  }
 
   submissions[subIndex] = {
     ...submissions[subIndex],
     ...(googleMapsUrl ? { googleMapsUrl } : {}),
-    status: 'approved'
+    status: 'approved',
+    approvedAt: new Date().toISOString(),
+    approvedPlaceId: newId
   };
-  writeJsonFile('pendingPlaces.json', submissions);
+  const submissionsWritten = writeJsonFile('pendingPlaces.json', submissions);
+  if (!submissionsWritten) {
+    return res.status(500).json({
+      error: 'Place was approved, but pendingPlaces.json could not be updated.'
+    });
+  }
 
   res.json({ success: true, place: approvedPlace });
 });
