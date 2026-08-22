@@ -38,14 +38,12 @@ export interface Place {
   lat: number;
   lng: number;
   images: string[];
+  googleMapsUrl?: string;
   featured?: boolean;
   popular?: boolean;
   recommended?: boolean;
   address?: MultiLangString;
   contact?: string;
-  location?: {
-    map_url?: string;
-  };
   tags?: string[];
   createdAt?: string;
 }
