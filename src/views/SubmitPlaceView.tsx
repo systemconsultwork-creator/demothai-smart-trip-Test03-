@@ -2,21 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { Category, ProvinceItem } from '../types';
-import { 
-  PlusCircle, 
-  Send, 
-  Image as ImageIcon, 
-  MapPin, 
-  Sparkles, 
-  CheckCircle2, 
-  Globe2, 
-  Clock, 
-  DollarSign, 
-  Layers 
+import {
+  Send,
+  MapPin,
+  Sparkles,
+  CheckCircle2,
+  Globe2,
+  Clock,
+  DollarSign,
+  Layers,
+  ExternalLink
 } from 'lucide-react';
 
+const isGoogleMapsUrl = (value: string) => {
+  if (!value.trim()) return false;
+
+  try {
+    const url = new URL(value.trim());
+    if (!['http:', 'https:'].includes(url.protocol)) return false;
+
+    return [
+      'maps.app.goo.gl',
+      'www.google.com',
+      'google.com',
+      'maps.google.com',
+      'goo.gl',
+    ].includes(url.hostname);
+  } catch {
+    return false;
+  }
+};
+
 export const SubmitPlaceView: React.FC = () => {
-  const { t, lang, getLocalized, user, setIsAuthModalOpen, showToast, setCurrentView } = useApp();
+  const { t, getLocalized, user, setIsAuthModalOpen, showToast, setCurrentView } = useApp();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [provinces, setProvinces] = useState<ProvinceItem[]>([]);
@@ -34,6 +52,7 @@ export const SubmitPlaceView: React.FC = () => {
   const [descEn, setDescEn] = useState('');
   const [hours, setHours] = useState('08:00 - 17:00');
   const [priceTh, setPriceTh] = useState('เข้าชมฟรี');
+  const [googleMapsUrl, setGoogleMapsUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80');
 
   useEffect(() => {
@@ -67,14 +86,32 @@ export const SubmitPlaceView: React.FC = () => {
     setDescEn('Dramatic natural 30-meter high sediment canyon pillars and walking trails in Chiang Mai.');
     setHours('08:30 - 16:30');
     setPriceTh('คนไทย 20 / ต่างชาติ 100 บาท');
+    setGoogleMapsUrl('');
     setImageUrl('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1000&q=80');
-    showToast('Filled sample unseen destination data', 'info');
+    showToast('Filled sample destination data', 'info');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!nameTh.trim() || !descTh.trim()) {
       showToast('Please fill in required Thai name and description', 'error');
+      return;
+    }
+
+    const trimmedGoogleMapsUrl = googleMapsUrl.trim();
+    if (!trimmedGoogleMapsUrl) {
+      showToast('กรุณาระบุลิงก์ Google Maps ของสถานที่', 'error');
+      return;
+    }
+
+    if (!isGoogleMapsUrl(trimmedGoogleMapsUrl)) {
+      showToast('Google Maps URL ไม่ถูกต้อง กรุณาวางลิงก์จาก Google Maps', 'error');
+      return;
+    }
+
+    if (!imageUrl.trim()) {
+      showToast('Please provide at least one image URL', 'error');
       return;
     }
 
@@ -83,7 +120,7 @@ export const SubmitPlaceView: React.FC = () => {
       const catObj = categories.find(c => c.id === categoryId)?.name || { th: 'ท่องเที่ยว', en: 'Travel', zh: '旅游' };
       const selectedProvObj = provinces.find(p => p.name.th === provinceTh)?.name || { th: provinceTh, en: provinceTh, zh: provinceTh };
 
-      const regionMapName: Record<string, any> = {
+      const regionMapName: Record<string, { th: string; en: string; zh: string }> = {
         north: { th: 'ภาคเหนือ', en: 'Northern Thailand', zh: '泰国北部' },
         central: { th: 'ภาคกลาง', en: 'Central Thailand', zh: '泰国中部' },
         northeast: { th: 'ภาคตะวันออกเฉียงเหนือ', en: 'Northeastern Thailand', zh: '泰国东北部' },
@@ -98,9 +135,9 @@ export const SubmitPlaceView: React.FC = () => {
         },
         province: selectedProvObj,
         category: catObj,
-        categoryId: categoryId,
+        categoryId,
         region: regionMapName[regionId] || regionMapName.central,
-        regionId: regionId,
+        regionId,
         description: {
           th: descTh.trim(),
           en: descEn.trim() || descTh.trim(),
@@ -112,7 +149,8 @@ export const SubmitPlaceView: React.FC = () => {
           en: priceTh.trim() || 'Free Entry',
           zh: priceTh.trim() || '免费入场'
         },
-        images: [imageUrl],
+        googleMapsUrl: trimmedGoogleMapsUrl,
+        images: [imageUrl.trim()],
         submittedBy: {
           userId: user?.id || 'guest',
           userName: user?.name || 'Anonymous Contributor',
@@ -132,7 +170,7 @@ export const SubmitPlaceView: React.FC = () => {
 
   return (
     <div id="submit-place-view" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      
+
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-2xs">
@@ -165,6 +203,7 @@ export const SubmitPlaceView: React.FC = () => {
                 setNameZh('');
                 setDescTh('');
                 setDescEn('');
+                setGoogleMapsUrl('');
               }}
               className="px-6 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-colors"
             >
@@ -180,7 +219,7 @@ export const SubmitPlaceView: React.FC = () => {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="p-6 sm:p-10 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-8">
-          
+
           {/* Quick autofill sample helper */}
           <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
             <span className="text-slate-600">Want to test quickly with sample data?</span>
@@ -324,11 +363,11 @@ export const SubmitPlaceView: React.FC = () => {
             </div>
           </div>
 
-          {/* Practical Info & Image */}
+          {/* Practical Info, Google Maps & Image */}
           <div className="space-y-4 pt-4 border-t border-slate-100">
             <h3 className="text-sm font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-2">
               <Clock className="w-4 h-4 text-emerald-600" />
-              <span>4. Operating Hours, Fee & Photos</span>
+              <span>4. Operating Hours, Fee, Google Maps & Photos</span>
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -352,6 +391,46 @@ export const SubmitPlaceView: React.FC = () => {
                   placeholder="เข้าชมฟรี / คนไทย 40 ต่างชาติ 200 บาท"
                   className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 transition-colors"
                 />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 p-2 rounded-xl bg-white text-emerald-700 border border-emerald-100">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-slate-900">
+                    ตำแหน่งสถานที่ · Google Maps <span className="text-rose-500">*</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    วางลิงก์ Google Maps ของสถานที่นี้โดยตรง ระบบจะเก็บลิงก์นี้ไว้ใช้ตอนเปิดแผนที่
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                    <input
+                      type="url"
+                      value={googleMapsUrl}
+                      onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                      placeholder="https://maps.app.goo.gl/..."
+                      className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:border-emerald-500"
+                      required
+                    />
+                    {googleMapsUrl.trim() && isGoogleMapsUrl(googleMapsUrl) && (
+                      <a
+                        href={googleMapsUrl.trim()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        เปิดแผนที่
+                      </a>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-2">
+                    รองรับ maps.app.goo.gl, google.com/maps และ maps.google.com
+                  </p>
+                </div>
               </div>
             </div>
 
