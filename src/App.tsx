@@ -10,7 +10,7 @@ import { AdminRoute } from './components/AdminRoute';
 import { HomeView } from './views/HomeView';
 import { DiscoverView } from './views/DiscoverView';
 import { SubmitPlaceView } from './views/SubmitPlaceView';
-import { AdminDashboardView } from './views/AdminDashboardView';
+import { AdminDashboardViewV2 } from './views/AdminDashboardViewV2';
 import { AdminLoginView } from './views/AdminLoginView';
 import { ProfileView } from './views/ProfileView';
 
@@ -61,7 +61,7 @@ function AppContent() {
         {currentView === 'admin_login' && <AdminLoginView />}
         {currentView === 'admin' && (
           <AdminRoute>
-            <AdminDashboardView />
+            <AdminDashboardViewV2 />
           </AdminRoute>
         )}
         {currentView === 'profile' && <ProfileView />}
