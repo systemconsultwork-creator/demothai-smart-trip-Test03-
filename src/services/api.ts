@@ -252,7 +252,17 @@ export const api = {
       headers: getAuthHeaders(false),
     });
     if (!res.ok) throw new Error('Failed to approve submission');
-    return res.json();
+
+    const result = await res.json() as { success: boolean; place: Place };
+    if (!result?.place?.id) throw new Error('Approve succeeded but no place was returned.');
+
+    // The approved place must be written to Firestore immediately.
+    // This keeps the public Search/Discover pages and Admin Places view on the
+    // same source of truth, without requiring npm run sync:places.
+    const db = requireFirebaseAdmin();
+    await setDoc(doc(db, 'places', String(result.place.id)), result.place);
+
+    return result;
   },
 
   async rejectSubmission(id: string): Promise<void> {
@@ -263,7 +273,7 @@ export const api = {
     if (!res.ok) throw new Error('Failed to reject submission');
   },
 
-  // Admin Stats
+  // Admin Stats — place counts always come from Firestore.
   async getAdminStats(): Promise<{
     totalPlaces: number;
     pendingSubmissions: number;
@@ -271,11 +281,28 @@ export const api = {
     totalUsers: number;
     regionalStats: { north: number; central: number; northeast: number; south: number };
   }> {
-    const res = await fetch('/api/admin/stats', {
-      headers: getAuthHeaders(false),
-    });
+    const [res, firestorePlaces] = await Promise.all([
+      fetch('/api/admin/stats', {
+        headers: getAuthHeaders(false),
+      }),
+      getFirestorePlaces(),
+    ]);
+
     if (!res.ok) throw new Error('Failed to fetch admin stats');
-    return res.json();
+    const backendStats = await res.json();
+
+    const regionalStats = {
+      north: firestorePlaces.filter(place => place.regionId === 'north').length,
+      central: firestorePlaces.filter(place => place.regionId === 'central').length,
+      northeast: firestorePlaces.filter(place => place.regionId === 'northeast').length,
+      south: firestorePlaces.filter(place => place.regionId === 'south').length,
+    };
+
+    return {
+      ...backendStats,
+      totalPlaces: firestorePlaces.length,
+      regionalStats,
+    };
   },
 
   // Auth & Users
