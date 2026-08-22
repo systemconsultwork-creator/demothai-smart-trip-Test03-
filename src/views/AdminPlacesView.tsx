@@ -13,12 +13,36 @@ const REGIONS = [
   { id: 'south', name: { th: 'ภาคใต้', en: 'Southern Thailand', zh: '泰国南部' } },
 ] as const;
 
+type LegacyPlace = Place & { location?: { map_url?: string } };
+
+const getGoogleMapsUrl = (place?: Partial<Place>) => {
+  const legacy = place as LegacyPlace | undefined;
+  return place?.googleMapsUrl?.trim() || legacy?.location?.map_url?.trim() || '';
+};
+
+const isGoogleMapsUrl = (value: string) => {
+  if (!value.trim()) return true;
+  try {
+    const url = new URL(value.trim());
+    if (!['http:', 'https:'].includes(url.protocol)) return false;
+    return [
+      'maps.app.goo.gl',
+      'www.google.com',
+      'google.com',
+      'maps.google.com',
+      'goo.gl',
+    ].includes(url.hostname);
+  } catch {
+    return false;
+  }
+};
+
 const emptyPlace = (): Partial<Place> => ({
   name: { ...LANG_EMPTY }, province: { ...LANG_EMPTY }, category: { ...LANG_EMPTY }, categoryId: '',
   region: { ...LANG_EMPTY }, regionId: 'north', description: { ...LANG_EMPTY },
   rating: 5, reviewCount: 0, price: { th: 'เข้าชมฟรี', en: 'Free Entry', zh: '免费入场' },
   hours: '08:00 - 17:00', lat: 13.7563, lng: 100.5018, images: [''],
-  address: { ...LANG_EMPTY }, contact: '', location: { map_url: '' }, tags: [],
+  googleMapsUrl: '', address: { ...LANG_EMPTY }, contact: '', tags: [],
   featured: false, popular: false, recommended: false,
 });
 
@@ -82,7 +106,7 @@ export const AdminPlacesView: React.FC = () => {
   const openCreate = () => { setEditing(null); setForm(emptyPlace()); setEditorOpen(true); };
   const openEdit = (place: Place) => {
     setEditing(place);
-    setForm({ ...place, images: place.images?.length ? [...place.images] : [''], location: { map_url: place.location?.map_url || '' } });
+    setForm({ ...place, images: place.images?.length ? [...place.images] : [''], googleMapsUrl: getGoogleMapsUrl(place) });
     setEditorOpen(true);
   };
   const closeEditor = () => { if (!saving) { setEditorOpen(false); setEditing(null); setForm(emptyPlace()); } };
@@ -113,11 +137,26 @@ export const AdminPlacesView: React.FC = () => {
     const images = (form.images || []).map((item) => item.trim()).filter(Boolean);
     if (!images.length) { showToast('กรุณาระบุ URL รูปภาพอย่างน้อย 1 รูป', 'error'); return; }
 
+    const googleMapsUrl = form.googleMapsUrl?.trim() || '';
+    if (!editing && !googleMapsUrl) {
+      showToast('กรุณาระบุ Google Maps URL สำหรับสถานที่ใหม่', 'error');
+      return;
+    }
+    if (googleMapsUrl && !isGoogleMapsUrl(googleMapsUrl)) {
+      showToast('Google Maps URL ไม่ถูกต้อง กรุณาใช้ลิงก์จาก Google Maps', 'error');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: Partial<Place> = {
-        ...form, images, rating: Number(form.rating ?? 5), reviewCount: Number(form.reviewCount ?? 0),
-        lat: Number(form.lat ?? 0), lng: Number(form.lng ?? 0), location: { map_url: form.location?.map_url?.trim() || '' }
+        ...form,
+        images,
+        googleMapsUrl,
+        rating: Number(form.rating ?? 5),
+        reviewCount: Number(form.reviewCount ?? 0),
+        lat: Number(form.lat ?? 0),
+        lng: Number(form.lng ?? 0),
       };
       if (editing) {
         await api.updatePlace(editing.id, payload);
@@ -181,7 +220,7 @@ export const AdminPlacesView: React.FC = () => {
               <tbody className="divide-y divide-slate-100">{visible.map((place) => <tr key={place.id} className="hover:bg-slate-50/70">
                 <td className="px-5 py-4 min-w-[280px]"><div className="flex items-center gap-3">{place.images?.[0] ? <img src={place.images[0]} alt={place.name.th} className="w-12 h-12 rounded-xl object-cover border border-slate-200" /> : <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center"><ImageIcon className="w-5 h-5 text-slate-400" /></div>}<div><p className="font-bold text-slate-900 truncate max-w-[230px]">{localized(place.name)}</p><p className="text-xs text-slate-400">ID #{place.id}</p></div></div></td>
                 <td className="px-5 py-4 whitespace-nowrap">{localized(place.province)}</td><td className="px-5 py-4 whitespace-nowrap">{localized(place.region)}</td><td className="px-5 py-4 whitespace-nowrap"><span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">{localized(place.category)}</span></td><td className="px-5 py-4 whitespace-nowrap font-semibold text-amber-600">★ {Number(place.rating || 0).toFixed(1)} <span className="text-slate-400 font-normal">({place.reviewCount || 0})</span></td>
-                <td className="px-5 py-4"><div className="flex justify-end gap-2">{place.location?.map_url && <a href={place.location.map_url} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-slate-100 text-slate-600" title="เปิด Google Maps"><MapPin className="w-4 h-4" /></a>}<button type="button" onClick={() => openEdit(place)} className="p-2 rounded-lg bg-emerald-50 text-emerald-700" title="แก้ไข"><Edit3 className="w-4 h-4" /></button><button type="button" onClick={() => remove(place)} className="p-2 rounded-lg bg-rose-50 text-rose-700" title="ลบ"><Trash2 className="w-4 h-4" /></button></div></td>
+                <td className="px-5 py-4"><div className="flex justify-end gap-2">{getGoogleMapsUrl(place) && <a href={getGoogleMapsUrl(place)} target="_blank" rel="noreferrer" className="p-2 rounded-lg bg-slate-100 text-slate-600" title="เปิด Google Maps"><MapPin className="w-4 h-4" /></a>}<button type="button" onClick={() => openEdit(place)} className="p-2 rounded-lg bg-emerald-50 text-emerald-700" title="แก้ไข"><Edit3 className="w-4 h-4" /></button><button type="button" onClick={() => remove(place)} className="p-2 rounded-lg bg-rose-50 text-rose-700" title="ลบ"><Trash2 className="w-4 h-4" /></button></div></td>
               </tr>)}</tbody>
             </table></div>
           )}
@@ -195,8 +234,9 @@ export const AdminPlacesView: React.FC = () => {
             <section><h3 className="font-bold text-slate-900 mb-3">ชื่อสถานที่ · TH / EN / ZH</h3><div className="grid grid-cols-1 md:grid-cols-3 gap-3">{(['th','en','zh'] as const).map((l) => <input key={l} value={form.name?.[l] || ''} onChange={(e) => setLang('name', l, e.target.value)} placeholder={`ชื่อ (${l.toUpperCase()})`} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm" required={l === 'th'} />)}</div></section>
             <section className="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label className="block text-xs font-semibold mb-1">จังหวัด</label><select value={provinces.find((item) => item.name.th === form.province?.th)?.id || ''} onChange={(e) => selectProvince(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm"><option value="">เลือกจังหวัด</option>{provinces.map((item) => <option key={item.id} value={item.id}>{item.name.th}</option>)}</select></div><div><label className="block text-xs font-semibold mb-1">ภูมิภาค</label><select value={form.regionId || 'north'} onChange={(e) => selectRegion(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm">{REGIONS.map((item) => <option key={item.id} value={item.id}>{item.name.th}</option>)}</select></div><div><label className="block text-xs font-semibold mb-1">หมวดหมู่</label><select value={form.categoryId || ''} onChange={(e) => selectCategory(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm"><option value="">เลือกหมวดหมู่</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name.th}</option>)}</select></div></section>
             <section><h3 className="font-bold text-slate-900 mb-3">คำอธิบาย · TH / EN / ZH</h3>{(['th','en','zh'] as const).map((l) => <textarea key={l} rows={3} value={form.description?.[l] || ''} onChange={(e) => setLang('description', l, e.target.value)} placeholder={`คำอธิบาย (${l.toUpperCase()})`} className="w-full mb-3 px-3 py-2.5 rounded-xl border border-slate-200 text-sm" required={l === 'th'} />)}</section>
-            <section className="grid grid-cols-1 md:grid-cols-4 gap-4"><div><label className="block text-xs font-semibold mb-1">เวลาเปิด-ปิด</label><input value={form.hours || ''} onChange={(e) => setForm({ ...form, hours: e.target.value })} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm" /></div><div><label className="block text-xs font-semibold mb-1">ราคา TH</label><input value={form.price?.th || ''} onChange={(e) => setLang('price','th',e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm" /></div><div><label className="block text-xs font-semibold mb-1">Latitude</label><input type="number" step="any" value={form.lat ?? ''} onChange={(e) => setForm({ ...form, lat: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm" /></div><div><label className="block text-xs font-semibold mb-1">Longitude</label><input type="number" step="any" value={form.lng ?? ''} onChange={(e) => setForm({ ...form, lng: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm" /></div></section>
-            <section><h3 className="font-bold text-slate-900 mb-3">Google Maps / รูปภาพ</h3><div className="flex gap-2 mb-3"><input value={form.location?.map_url || ''} onChange={(e) => setForm({ ...form, location: { map_url: e.target.value } })} placeholder="Google Maps URL" className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm" />{form.location?.map_url && <a href={form.location.map_url} target="_blank" rel="noreferrer" className="p-2.5 rounded-xl bg-slate-100"><ExternalLink className="w-4 h-4" /></a>}</div>{(form.images || ['']).map((url, index) => <div key={index} className="flex gap-2 mb-2"><input value={url} onChange={(e) => setForm((current) => ({ ...current, images: (current.images || []).map((item, i) => i === index ? e.target.value : item) }))} placeholder={`Image URL ${index + 1}`} className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm" /><button type="button" disabled={(form.images || []).length <= 1} onClick={() => setForm((current) => ({ ...current, images: (current.images || []).filter((_, i) => i !== index) }))} className="p-2.5 rounded-xl bg-rose-50 text-rose-700 disabled:opacity-40"><Trash2 className="w-4 h-4" /></button></div>)}<button type="button" onClick={() => setForm((current) => ({ ...current, images: [...(current.images || []), ''] }))} className="text-xs font-bold text-emerald-700">+ เพิ่มรูปภาพ</button></section>
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-xs font-semibold mb-1">เวลาเปิด-ปิด</label><input value={form.hours || ''} onChange={(e) => setForm({ ...form, hours: e.target.value })} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm" /></div><div><label className="block text-xs font-semibold mb-1">ราคา TH</label><input value={form.price?.th || ''} onChange={(e) => setLang('price','th',e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm" /></div></section>
+            <section className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4"><div className="flex items-start gap-3"><div className="mt-0.5 p-2 rounded-xl bg-white text-emerald-700 border border-emerald-100"><MapPin className="w-4 h-4" /></div><div className="flex-1"><h3 className="font-bold text-slate-900">ตำแหน่งสถานที่ · Google Maps</h3><p className="text-xs text-slate-500 mt-1">วางลิงก์ Google Maps ของสถานที่นี้ ไม่ต้องกรอก Latitude / Longitude</p><div className="flex flex-col sm:flex-row gap-2 mt-3"><input type="url" value={form.googleMapsUrl || ''} onChange={(e) => setForm({ ...form, googleMapsUrl: e.target.value })} placeholder="https://maps.app.goo.gl/..." className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm bg-white" required={!editing} />{form.googleMapsUrl?.trim() && isGoogleMapsUrl(form.googleMapsUrl) && <a href={form.googleMapsUrl.trim()} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50" title="เปิด Google Maps"><ExternalLink className="w-4 h-4" /> เปิดแผนที่</a>}</div><p className="text-[11px] text-slate-400 mt-2">รองรับลิงก์ maps.app.goo.gl, google.com/maps และ maps.google.com</p></div></div></section>
+            <section><h3 className="font-bold text-slate-900 mb-3">รูปภาพ</h3>{(form.images || ['']).map((url, index) => <div key={index} className="flex gap-2 mb-2"><input value={url} onChange={(e) => setForm((current) => ({ ...current, images: (current.images || []).map((item, i) => i === index ? e.target.value : item) }))} placeholder={`Image URL ${index + 1}`} className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-sm" /><button type="button" disabled={(form.images || []).length <= 1} onClick={() => setForm((current) => ({ ...current, images: (current.images || []).filter((_, i) => i !== index) }))} className="p-2.5 rounded-xl bg-rose-50 text-rose-700 disabled:opacity-40"><Trash2 className="w-4 h-4" /></button></div>)}<button type="button" onClick={() => setForm((current) => ({ ...current, images: [...(current.images || []), ''] }))} className="text-xs font-bold text-emerald-700">+ เพิ่มรูปภาพ</button></section>
             <section className="flex flex-wrap gap-5">{(['featured','popular','recommended'] as const).map((flag) => <label key={flag} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(form[flag])} onChange={(e) => setForm({ ...form, [flag]: e.target.checked })} />{flag}</label>)}</section>
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-200"><button type="button" onClick={closeEditor} className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-sm">ยกเลิก</button><button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center gap-2 disabled:opacity-60"><Check className="w-4 h-4" />{saving ? 'กำลังบันทึก...' : 'บันทึกสถานที่'}</button></div>
           </form>
