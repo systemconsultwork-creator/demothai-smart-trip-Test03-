@@ -12,6 +12,7 @@ import { DiscoverView } from './views/DiscoverView';
 import { SubmitPlaceView } from './views/SubmitPlaceView';
 import { AdminDashboardView } from './views/AdminDashboardView';
 import { AdminLoginView } from './views/AdminLoginView';
+import { AdminPlacesView } from './views/AdminPlacesView';
 import { ProfileView } from './views/ProfileView';
 
 function AppContent() {
@@ -21,12 +22,10 @@ function AppContent() {
     isAdmin,
     selectedPlaceId,
     setSelectedPlaceId,
-    showToast,
-    t
   } = useApp();
 
-  // Direct navigation: /admin is the protected admin entry point.
-  // Unauthenticated visitors are sent to the dedicated Admin Login screen.
+  const isAdminPlacesPath = window.location.pathname === '/admin/places';
+
   useEffect(() => {
     const pathname = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
@@ -35,9 +34,7 @@ function AppContent() {
 
     if (pId) {
       const parsed = parseInt(pId, 10);
-      if (!isNaN(parsed) && parsed > 0) {
-        setSelectedPlaceId(parsed);
-      }
+      if (!isNaN(parsed) && parsed > 0) setSelectedPlaceId(parsed);
     }
 
     if (pathname === '/admin' || pathname === '/admin/login' || viewParam === 'admin') {
@@ -48,25 +45,28 @@ function AppContent() {
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAF9] text-[#172033] font-sans selection:bg-emerald-600 selection:text-white">
       <Navbar />
-
       <main className="flex-1">
-        {currentView === 'home' && <HomeView />}
-        {currentView === 'discover' && <DiscoverView />}
-        {currentView === 'submit_place' && <SubmitPlaceView />}
-        {currentView === 'admin_login' && <AdminLoginView />}
-        {currentView === 'admin' && (
+        {isAdminPlacesPath ? (
           <AdminRoute>
-            <AdminDashboardView />
+            <AdminPlacesView />
           </AdminRoute>
+        ) : (
+          <>
+            {currentView === 'home' && <HomeView />}
+            {currentView === 'discover' && <DiscoverView />}
+            {currentView === 'submit_place' && <SubmitPlaceView />}
+            {currentView === 'admin_login' && <AdminLoginView />}
+            {currentView === 'admin' && (
+              <AdminRoute>
+                <AdminDashboardView />
+              </AdminRoute>
+            )}
+            {currentView === 'profile' && <ProfileView />}
+          </>
         )}
-        {currentView === 'profile' && <ProfileView />}
       </main>
 
-      <PlaceDetailModal
-        placeId={selectedPlaceId}
-        onClose={() => setSelectedPlaceId(null)}
-      />
-
+      <PlaceDetailModal placeId={selectedPlaceId} onClose={() => setSelectedPlaceId(null)} />
       <AuthModal />
       <ToastContainer />
       <Footer />
