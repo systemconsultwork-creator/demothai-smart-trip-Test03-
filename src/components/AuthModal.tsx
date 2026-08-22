@@ -86,8 +86,8 @@ export const AuthModal: React.FC = () => {
           role: verifiedRole,
           avatar: firestoreProfile.avatar,
           createdAt: firestoreProfile.createdAt,
-          // Favorite synchronization is intentionally handled in STEP 3.
-          favorites: []
+          // Restore the favorites already stored in the user's Firestore document.
+          favorites: firestoreProfile.favorites
         };
 
         setUser(appUser);
@@ -190,7 +190,6 @@ export const AuthModal: React.FC = () => {
           onClick={(e) => e.stopPropagation()}
           className="relative w-full max-w-md bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-2xl text-slate-900 space-y-6"
         >
-          {/* Close Button [ × ] */}
           <button
             id="auth-modal-close-btn"
             onClick={handleClose}
@@ -200,7 +199,6 @@ export const AuthModal: React.FC = () => {
             <X className="w-5 h-5" />
           </button>
 
-          {/* Modal Header */}
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center gap-1.5 text-emerald-700 text-xs font-bold uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-emerald-600" />
@@ -214,9 +212,7 @@ export const AuthModal: React.FC = () => {
             </p>
           </div>
 
-          {/* Action Buttons Section */}
           <div className="space-y-4 pt-1">
-            {/* Primary Action: Google Login */}
             <button
               id="google-signin-btn"
               type="button"
@@ -237,7 +233,6 @@ export const AuthModal: React.FC = () => {
               )}
             </button>
 
-            {/* Divider: ──────── or ──────── */}
             <div className="relative flex items-center justify-center py-1">
               <div className="w-full border-t border-slate-200"></div>
               <span className="bg-white px-3 text-xs font-medium text-slate-400 select-none">
@@ -246,7 +241,6 @@ export const AuthModal: React.FC = () => {
               <div className="w-full border-t border-slate-200"></div>
             </div>
 
-            {/* Secondary Action: Admin Mode */}
             <button
               id="auth-admin-mode-btn"
               type="button"
