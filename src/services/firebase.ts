@@ -56,6 +56,7 @@ export interface FirestoreUserProfile {
   avatar: string;
   role?: 'admin' | 'user';
   createdAt: string;
+  favorites: number[];
 }
 
 /**
@@ -63,7 +64,8 @@ export interface FirestoreUserProfile {
  *
  * Existing documents are read without being overwritten. New users get
  * a single profile document keyed by their Firebase UID.
- * Favorite synchronization is intentionally handled in a later step.
+ * Favorite synchronization is handled separately; this step only restores
+ * the favorites already stored on the user's Firestore profile.
  */
 export const ensureFirestoreUser = async (
   firebaseUser: FirebaseUser,
@@ -79,6 +81,9 @@ export const ensureFirestoreUser = async (
 
   if (snapshot.exists()) {
     const data = snapshot.data();
+    const storedFavorites = Array.isArray(data.favorites)
+      ? data.favorites.filter((id): id is number => typeof id === 'number')
+      : [];
 
     return {
       name: typeof data.name === 'string'
@@ -94,6 +99,7 @@ export const ensureFirestoreUser = async (
       createdAt: typeof data.createdAt === 'string'
         ? data.createdAt
         : new Date().toISOString(),
+      favorites: storedFavorites,
     };
   }
 
@@ -103,6 +109,7 @@ export const ensureFirestoreUser = async (
     avatar: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
     role,
     createdAt: new Date().toISOString(),
+    favorites: [],
   };
 
   await setDoc(userRef, newProfile);
@@ -120,18 +127,13 @@ export const loginWithGoogle = async () => {
     const result = await signInWithPopup(currentAuth, googleProvider);
     return result.user;
   } catch (error: any) {
-    // Suppress unhandled crash logs if expected user cancellations or config warnings
-    if (error?.code !== 'auth/popup-closed-by-user' && error?.code !== 'auth/cancelled-popup-request') {
-      console.warn("Google login notification:", error?.message || error);
-    }
     throw error;
   }
 };
 
-export const logout = () => {
+export const logout = async () => {
   const currentAuth = getFirebaseAuth();
   if (currentAuth) {
-    return signOut(currentAuth);
+    await signOut(currentAuth);
   }
-  return Promise.resolve();
 };
