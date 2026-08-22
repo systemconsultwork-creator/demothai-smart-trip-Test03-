@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
-import { loginWithGoogle } from '../services/firebase';
+import { ensureFirestoreUser, loginWithGoogle } from '../services/firebase';
 import { User } from '../types';
-import { 
-  X, 
-  ShieldCheck, 
+import {
+  X,
+  ShieldCheck,
   Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -32,13 +32,13 @@ const GoogleIcon: React.FC = () => (
 );
 
 export const AuthModal: React.FC = () => {
-  const { 
-    isAuthModalOpen, 
-    setIsAuthModalOpen, 
-    setUser, 
-    t, 
+  const {
+    isAuthModalOpen,
+    setIsAuthModalOpen,
+    setUser,
+    t,
     lang,
-    showToast 
+    showToast
   } = useApp();
 
   const [loading, setLoading] = useState(false);
@@ -75,13 +75,18 @@ export const AuthModal: React.FC = () => {
           // Graceful fallback
         }
 
+        // STEP 2: Create the Firestore user document if it does not exist,
+        // or read the existing profile without overwriting it.
+        const firestoreProfile = await ensureFirestoreUser(firebaseUser, verifiedRole);
+
         const appUser: User = {
           id: firebaseUser.uid,
-          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Explorer',
-          email: firebaseUser.email || '',
+          name: firestoreProfile.name,
+          email: firestoreProfile.email,
           role: verifiedRole,
-          avatar: firebaseUser.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
-          createdAt: new Date().toISOString(),
+          avatar: firestoreProfile.avatar,
+          createdAt: firestoreProfile.createdAt,
+          // Favorite synchronization is intentionally handled in STEP 3.
           favorites: []
         };
 
@@ -148,7 +153,7 @@ export const AuthModal: React.FC = () => {
       const res = await api.login('admin@thaismarttrip.com');
       setUser(res.user);
       showToast(
-        lang === 'th' 
+        lang === 'th'
           ? 'เข้าสู่ระบบสำเร็จในฐานะผู้ดูแลระบบ (Admin Mode)'
           : lang === 'zh'
           ? '已进入管理员模式 (Admin Mode)'
@@ -172,7 +177,7 @@ export const AuthModal: React.FC = () => {
 
   return (
     <AnimatePresence>
-      <div 
+      <div
         id="auth-modal"
         className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs"
         onClick={handleClose}
