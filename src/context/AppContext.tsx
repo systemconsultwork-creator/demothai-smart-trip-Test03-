@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Language, MultiLangString, User } from '../types';
-
-// 1. Import Firebase Firestore & Auth
 import { db, logout as firebaseLogout } from '../services/firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { isAdminEmail } from '../config/admin';
 
 interface Toast {
   id: string;
@@ -58,35 +57,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeRegion, setActiveRegion] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedPlaceId, setSelectedPlaceId] = useState<number | null>(null);
-  
-  // User auth state
+
   const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('tst_user');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
-      } catch (e) {
+      } catch {
         return null;
       }
     }
     return null;
   });
 
-  // Synchronized isAdmin status based on real authenticated role
-  const isAdmin = Boolean(user && user.role === 'admin');
+  // Admin is never granted from role alone. The designated admin email must match too.
+  const isAdmin = Boolean(user && user.role === 'admin' && isAdminEmail(user.email));
 
-  // Favorites state
-  const [favorites, setFavorites] = useState<number[]>(() => {
-    if (user?.favorites) return user.favorites;
-    return [];
-  });
-
+  const [favorites, setFavorites] = useState<number[]>(() => user?.favorites || []);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register' | 'favorite_prompt'>('login');
   const [authPromptReason, setAuthPromptReason] = useState<'favorite' | 'general' | 'review'>('general');
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  // Load translations on lang change
   useEffect(() => {
     localStorage.setItem('tst_lang', lang);
     fetch(`/locales/${lang}/translation.json`)
@@ -95,40 +87,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .catch(err => console.error('Failed to load translations', err));
   }, [lang]);
 
-  // Sync favorites strictly with authenticated user and protect admin view
   useEffect(() => {
     if (user) {
       setFavorites(user.favorites || []);
       localStorage.setItem('tst_user', JSON.stringify(user));
-      // If user is not admin and is currently on admin view, bounce to home
-      if (user.role !== 'admin' && currentView === 'admin') {
+      if (!isAdmin && currentView === 'admin') {
         setCurrentView('home');
       }
     } else {
       setFavorites([]);
       localStorage.removeItem('tst_user');
       localStorage.removeItem('tst_favorites');
-      if (currentView === 'admin') {
-        setCurrentView('home');
-      }
+      if (currentView === 'admin') setCurrentView('home');
     }
-  }, [user, currentView]);
+  }, [user, currentView, isAdmin]);
 
-  // Protected View Navigation handler
   const handleSetCurrentView = (view: string) => {
-    if (view === 'admin') {
-      if (!user || user.role !== 'admin') {
-        showToast(
-          lang === 'th' 
-            ? 'บัญชีนี้ไม่มีสิทธิ์ระดับผู้ดูแลระบบ (Admin Only)' 
-            : lang === 'zh' 
-            ? '此账号没有管理员访问权限。' 
-            : 'This account does not have administrator privileges.',
-          'error'
-        );
-        setCurrentView('home');
-        return;
-      }
+    if (view === 'admin' && !isAdmin) {
+      showToast(
+        lang === 'th'
+          ? 'บัญชีนี้ไม่มีสิทธิ์ระดับผู้ดูแลระบบ (Admin Only)'
+          : lang === 'zh'
+          ? '此账号没有管理员访问权限。'
+          : 'This account does not have administrator privileges.',
+        'error'
+      );
+      setCurrentView('home');
+      return;
     }
     setCurrentView(view);
   };
@@ -136,26 +121,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = `toast-${Date.now()}-${Math.random()}`;
     setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 4000);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   };
 
-  const removeToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
+  const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
 
   const t = (key: string, variables?: Record<string, string | number>): string => {
     const keys = key.split('.');
     let val: any = translations;
     for (const k of keys) {
-      if (val && typeof val === 'object' && k in val) {
-        val = val[k];
-      } else {
-        return key;
-      }
+      if (val && typeof val === 'object' && k in val) val = val[k];
+      else return key;
     }
-
     if (typeof val === 'string' && variables) {
       let formatted = val;
       for (const [vKey, vVal] of Object.entries(variables)) {
@@ -163,7 +140,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       return formatted;
     }
-
     return typeof val === 'string' ? val : key;
   };
 
@@ -172,7 +148,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return obj[lang] || obj.th || obj.en || obj.zh || '';
   };
 
-  // 2. ปรับการ toggleFavorite ให้บันทึกลง Firebase Firestore
   const toggleFavorite = async (placeId: number) => {
     if (!user) {
       setIsAuthModalOpen(true);
@@ -181,36 +156,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const previousFavorites = [...favorites];
     const isFav = previousFavorites.includes(placeId);
-    const newFavs = isFav ? previousFavorites.filter(id => id !== placeId) : [...previousFavorites, placeId];
-    
-    // อัปเดต UI ทันทีแบบ Optimistic Update
+    const newFavs = isFav
+      ? previousFavorites.filter(id => id !== placeId)
+      : [...previousFavorites, placeId];
+
     setFavorites(newFavs);
     const updatedUser = { ...user, favorites: newFavs };
     setUser(updatedUser);
     localStorage.setItem('tst_user', JSON.stringify(updatedUser));
 
     try {
-      // ยิงข้อมูลอัปเดตลง Collection 'users' ใน Firestore
       const userRef = doc(db, 'users', String(user.id));
       await updateDoc(userRef, {
         favorites: isFav ? arrayRemove(placeId) : arrayUnion(placeId)
       });
-
       showToast(
-        isFav 
+        isFav
           ? (lang === 'th' ? 'ลบออกจากรายการโปรดแล้ว' : lang === 'zh' ? '已从收藏夹移除' : 'Removed from favorites')
           : (lang === 'th' ? 'บันทึกในรายการโปรดแล้ว' : lang === 'zh' ? '已添加至收藏夹' : 'Added to favorites'),
         'success'
       );
     } catch (err) {
       console.error('Failed to sync favorite on Firebase', err);
-
-      // Roll back UI, user state, and local cache to the last known Firestore state.
       setFavorites(previousFavorites);
-      const rollbackUser = { ...user, favorites: previousFavorites };
-      setUser(rollbackUser);
-      localStorage.setItem('tst_user', JSON.stringify(rollbackUser));
-
+      setUser({ ...user, favorites: previousFavorites });
       showToast(
         lang === 'th'
           ? 'ไม่สามารถบันทึกรายการโปรดได้ กรุณาลองใหม่อีกครั้ง'
@@ -236,9 +205,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       lang === 'th' ? 'ออกจากระบบเรียบร้อยแล้ว' : lang === 'zh' ? '已退出登录' : 'Logged out successfully',
       'info'
     );
-    if (currentView === 'admin' || currentView === 'profile') {
-      setCurrentView('home');
-    }
+    if (currentView === 'admin' || currentView === 'profile') setCurrentView('home');
   };
 
   const quickSearch = (term: string) => {
@@ -249,40 +216,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   return (
-    <AppContext.Provider
-      value={{
-        lang,
-        setLang,
-        t,
-        getLocalized,
-        currentView,
-        setCurrentView: handleSetCurrentView,
-        activeCategory,
-        setActiveCategory,
-        activeRegion,
-        setActiveRegion,
-        searchQuery,
-        setSearchQuery,
-        selectedPlaceId,
-        setSelectedPlaceId,
-        user,
-        setUser,
-        isAdmin,
-        favorites,
-        toggleFavorite,
-        isAuthModalOpen,
-        setIsAuthModalOpen,
-        authModalMode,
-        setAuthModalMode,
-        authPromptReason,
-        setAuthPromptReason,
-        toasts,
-        showToast,
-        removeToast,
-        logout,
-        quickSearch
-      }}
-    >
+    <AppContext.Provider value={{
+      lang,
+      setLang,
+      t,
+      getLocalized,
+      currentView,
+      setCurrentView: handleSetCurrentView,
+      activeCategory,
+      setActiveCategory,
+      activeRegion,
+      setActiveRegion,
+      searchQuery,
+      setSearchQuery,
+      selectedPlaceId,
+      setSelectedPlaceId,
+      user,
+      setUser,
+      isAdmin,
+      favorites,
+      toggleFavorite,
+      isAuthModalOpen,
+      setIsAuthModalOpen,
+      authModalMode,
+      setAuthModalMode,
+      authPromptReason,
+      setAuthPromptReason,
+      toasts,
+      showToast,
+      removeToast,
+      logout,
+      quickSearch
+    }}>
       {children}
     </AppContext.Provider>
   );
@@ -290,8 +255,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
+  if (!context) throw new Error('useApp must be used within an AppProvider');
   return context;
 };
