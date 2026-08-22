@@ -93,26 +93,27 @@ export const AdminDashboardView: React.FC = () => {
     [pendingList],
   );
 
+  // Firestore is the source of truth for all place counts shown here.
   const chartData = useMemo(
     () => [
       {
         name: lang === 'th' ? 'เหนือ' : lang === 'zh' ? '北部' : 'North',
-        count: stats?.regionalStats?.north || 0,
+        count: places.filter((place) => place.regionId === 'north').length,
       },
       {
         name: lang === 'th' ? 'กลาง' : lang === 'zh' ? '中部' : 'Central',
-        count: stats?.regionalStats?.central || 0,
+        count: places.filter((place) => place.regionId === 'central').length,
       },
       {
         name: lang === 'th' ? 'อีสาน' : lang === 'zh' ? '东北部' : 'Northeast',
-        count: stats?.regionalStats?.northeast || 0,
+        count: places.filter((place) => place.regionId === 'northeast').length,
       },
       {
         name: lang === 'th' ? 'ใต้' : lang === 'zh' ? '南部' : 'South',
-        count: stats?.regionalStats?.south || 0,
+        count: places.filter((place) => place.regionId === 'south').length,
       },
     ],
-    [lang, stats],
+    [lang, places],
   );
 
   const handleApproveSubmission = async (id: string) => {
@@ -153,7 +154,7 @@ export const AdminDashboardView: React.FC = () => {
     }
   };
 
-  const totalPlaces = stats?.totalPlaces ?? places.length;
+  const totalPlaces = places.length;
   const totalReviews = stats?.totalReviews ?? reviewsList.length;
   const totalUsers = stats?.totalUsers ?? 0;
   const pendingTotal = stats?.pendingSubmissions ?? pendingCount;
@@ -308,7 +309,7 @@ export const AdminDashboardView: React.FC = () => {
               <h3 className="text-base font-bold text-slate-900">สถานะระบบ</h3>
               <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
                 <p className="text-xs text-slate-500">Database</p>
-                <p className="font-bold text-emerald-700 mt-1">JSON Storage · {totalPlaces} Places</p>
+                <p className="font-bold text-emerald-700 mt-1">Firebase Firestore · Primary Database · {totalPlaces} Places</p>
               </div>
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
                 <p className="text-xs text-slate-500">Languages</p>
