@@ -3,9 +3,9 @@ import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { ensureFirestoreUser, loginWithGoogle } from '../services/firebase';
 import { User } from '../types';
-import { X, ShieldCheck, Sparkles } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ADMIN_EMAIL, isAdminEmail } from '../config/admin';
+import { isAdminEmail } from '../config/admin';
 
 const GoogleIcon: React.FC = () => (
   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
@@ -18,29 +18,26 @@ const GoogleIcon: React.FC = () => (
 
 export const AuthModal: React.FC = () => {
   const { isAuthModalOpen, setIsAuthModalOpen, setUser, t, lang, showToast } = useApp();
-  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
   if (!isAuthModalOpen) return null;
 
   const handleClose = () => {
-    if (googleLoading || loading) return;
+    if (googleLoading) return;
     setIsAuthModalOpen(false);
   };
 
   const handleGoogleLogin = async () => {
-    if (googleLoading || loading) return;
+    if (googleLoading) return;
     setGoogleLoading(true);
     try {
       const firebaseUser = await loginWithGoogle();
       if (!firebaseUser) return;
 
-      // Keep backend users.json in sync, but never trust its client-supplied role as the source of admin truth.
       if (firebaseUser.email) {
         await api.login(firebaseUser.email).catch(() => null);
       }
 
-      // Admin is determined only by the designated Firebase account email.
       const firestoreProfile = await ensureFirestoreUser(firebaseUser);
       const verifiedRole: 'admin' | 'user' = isAdminEmail(firebaseUser.email) ? 'admin' : 'user';
 
@@ -95,28 +92,6 @@ export const AuthModal: React.FC = () => {
     }
   };
 
-  const handleAdminMode = async () => {
-    setLoading(true);
-    try {
-      // Temporary local admin shortcut. The real admin identity is still the exact designated email.
-      const res = await api.login(ADMIN_EMAIL);
-      if (res.user.email !== ADMIN_EMAIL || res.user.role !== 'admin') {
-        throw new Error('Designated admin account is not configured correctly.');
-      }
-      setUser(res.user);
-      showToast(
-        lang === 'th' ? 'เข้าสู่ระบบสำเร็จในฐานะผู้ดูแลระบบ (Admin Mode)' : lang === 'zh' ? '已进入管理员模式 (Admin Mode)' : 'Logged in as Administrator (Admin Mode)',
-        'success'
-      );
-      setIsAuthModalOpen(false);
-    } catch (err: any) {
-      console.error('Admin mode auth failed', err);
-      showToast(err?.message || 'Admin mode login failed', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const getSubtitle = () => {
     if (lang === 'th') return 'เข้าสู่ระบบเพื่อเข้าถึงฟีเจอร์การท่องเที่ยวส่วนตัวของคุณ';
     if (lang === 'zh') return '登录以获取您的个性化旅游功能。';
@@ -137,15 +112,9 @@ export const AuthModal: React.FC = () => {
             <p id="auth-modal-desc" className="text-xs sm:text-sm text-slate-500 leading-relaxed">{getSubtitle()}</p>
           </div>
 
-          <div className="space-y-4 pt-1">
-            <button id="google-signin-btn" type="button" onClick={handleGoogleLogin} disabled={googleLoading || loading} className="w-full py-3.5 px-5 rounded-2xl bg-white hover:bg-slate-50 active:scale-[0.99] border border-slate-300 hover:border-slate-400 text-slate-800 font-bold text-sm sm:text-base shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer">
+          <div className="pt-1">
+            <button id="google-signin-btn" type="button" onClick={handleGoogleLogin} disabled={googleLoading} className="w-full py-3.5 px-5 rounded-2xl bg-white hover:bg-slate-50 active:scale-[0.99] border border-slate-300 hover:border-slate-400 text-slate-800 font-bold text-sm sm:text-base shadow-xs hover:shadow-sm transition-all flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer">
               {googleLoading ? <><div className="w-4 h-4 border-2 border-slate-300 border-t-emerald-600 rounded-full animate-spin" /><span>{t('auth.loggingIn')}</span></> : <><GoogleIcon /><span>{t('auth.loginWithGoogle')}</span></>}
-            </button>
-
-            <div className="relative flex items-center justify-center py-1"><div className="w-full border-t border-slate-200" /><span className="bg-white px-3 text-xs font-medium text-slate-400 select-none">{t('auth.or')}</span><div className="w-full border-t border-slate-200" /></div>
-
-            <button id="auth-admin-mode-btn" type="button" onClick={handleAdminMode} disabled={loading || googleLoading} className="w-full py-3 px-5 rounded-2xl bg-amber-50/70 hover:bg-amber-100/80 active:scale-[0.99] border border-amber-300 hover:border-amber-400 text-amber-900 font-bold text-sm flex items-center justify-center gap-2.5 transition-all shadow-2xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
-              {loading ? <><div className="w-4 h-4 border-2 border-amber-400 border-t-amber-700 rounded-full animate-spin" /><span>{t('auth.loggingIn')}</span></> : <><ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" /><span>{t('auth.admin_mode')}</span></>}
             </button>
           </div>
         </motion.div>
