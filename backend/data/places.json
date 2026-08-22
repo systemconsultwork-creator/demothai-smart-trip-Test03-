@@ -12402,58 +12402,59 @@
   {
     "id": 201,
     "name": {
-      "th": "พิพิธภัณฑ์ ช้างเอราวัณ",
-      "en": "Erawan Museum",
-      "zh": "三头神象博物馆"
+      "th": "ฟฟฟ",
+      "en": "ฟฟฟ",
+      "zh": "ฟฟฟ"
     },
     "province": {
-      "th": "สมุทรปราการ",
-      "en": "Samut Prakan",
-      "zh": "北榄"
+      "th": "เชียงใหม่",
+      "en": "Chiang Mai",
+      "zh": "清迈"
     },
     "category": {
-      "th": "ประวัติศาสตร์และมรดกโลก",
-      "en": "History & Heritage",
-      "zh": "历史与世界遗产"
+      "th": "ธรรมชาติและภูเขา",
+      "en": "Nature & Mountains",
+      "zh": "自然与山脉"
     },
-    "categoryId": "history",
+    "categoryId": "nature",
     "region": {
-      "th": "ภาคกลาง",
-      "en": "Central Thailand",
-      "zh": "泰国中部"
+      "th": "ภาคเหนือ",
+      "en": "Northern Thailand",
+      "zh": "泰国北部"
     },
-    "regionId": "central",
+    "regionId": "north",
     "description": {
-      "th": "เป็นประติมากรรมลอยตัวรูปช้าง 3 เศียรขนาดใหญ่ที่สุดในโลก ตั้งอยู่ที่จังหวัดสมุทรปราการ สร้างขึ้นจากความศรัทธาด้านศิลปะและศาสนา ภายในแบ่งเป็น 3 ชั้น ตามคติไตรภูมิ คือ โลกใต้ดิน โลกมนุษย์ และสวรรค์ เพื่อเก็บรักษาโบราณวัตถุและสืบสานอารยธรรมตะวันออก",
-      "en": "This is the world's largest free-standing sculpture of a three-headed elephant, located in Samut Prakan province. It was created out of artistic and religious devotion and is divided into three levels, representing the three realms of existence: the underworld, the human world, and heaven, to preserve ancient artifacts and preserve Eastern civilization.",
-      "zh": "เป็นประติมากรรมลอยตัวรูปช้าง 3 เศียรขนาดใหญ่ที่สุดในโลก ตั้งอยู่ที่จังหวัดสมุทรปราการ สร้างขึ้นจากความศรัทธาด้านศิลปะและศาสนา ภายในแบ่งเป็น 3 ชั้น ตามคติไตรภูมิ คือ โลกใต้ดิน โลกมนุษย์ และสวรรค์ เพื่อเก็บรักษาโบราณวัตถุและสืบสานอารยธรรมตะวันออก"
+      "th": "ฟฟฟ",
+      "en": "ฟฟฟ",
+      "zh": "ฟฟฟ"
     },
     "rating": 5,
     "reviewCount": 0,
     "price": {
-      "th": "คนไทย ผู้ใหญ่ราคา 250 บาท เด็กราคา 125 บาท ส่วนชาวต่างชาติ ผู้ใหญ่ราคา 500 บาท และเด็กราคา 250 บาท",
-      "en": "คนไทย ผู้ใหญ่ราคา 250 บาท เด็กราคา 125 บาท ส่วนชาวต่างชาติ ผู้ใหญ่ราคา 500 บาท และเด็กราคา 250 บาท",
-      "zh": "คนไทย ผู้ใหญ่ราคา 250 บาท เด็กราคา 125 บาท ส่วนชาวต่างชาติ ผู้ใหญ่ราคา 500 บาท และเด็กราคา 250 บาท"
+      "th": "เข้าชมฟรี",
+      "en": "เข้าชมฟรี",
+      "zh": "เข้าชมฟรี"
     },
-    "hours": "09:00 - 18:00",
+    "hours": "08:00 - 17:00",
     "lat": 13.7563,
     "lng": 100.5018,
     "images": [
-      "https://www.muangboranmuseum.com/wp-content/uploads/2018/12/03-places-single_01.jpg"
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80"
     ],
-    "googleMapsUrl": "https://maps.app.goo.gl/7coTkWjZtfGiy1tq8",
-    "sourceSubmissionId": "pend-1787418940038",
+    "googleMapsUrl": "https://maps.app.goo.gl/qiFYpXbeetCaLTde6",
+    "sourceSubmissionId": "pend-1787423561745",
     "address": {
-      "th": "สมุทรปราการ, ประเทศไทย",
-      "en": "Samut Prakan, Thailand",
-      "zh": "泰国北榄"
+      "th": "เชียงใหม่, ประเทศไทย",
+      "en": "Chiang Mai, Thailand",
+      "zh": "泰国清迈"
     },
     "contact": "+66 2 250 5500",
     "tags": [
-      "ประวัติศาสตร์และมรดกโลก",
-      "ภาคกลาง",
-      "สมุทรปราการ"
+      "ธรรมชาติและภูเขา",
+      "ภาคเหนือ",
+      "เชียงใหม่"
     ],
-    "createdAt": "2026-08-22T17:15:49.111Z"
+    "createdAt": "2026-08-22T18:32:53.813Z"
   }
+  
 ]

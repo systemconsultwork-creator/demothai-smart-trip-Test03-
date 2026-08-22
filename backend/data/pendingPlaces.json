@@ -242,5 +242,54 @@
     "submittedAt": "2026-08-22T18:07:47.065Z",
     "approvedAt": "2026-08-22T18:08:02.305Z",
     "approvedPlaceId": 202
+  },
+  {
+    "id": "pend-1787423561745",
+    "name": {
+      "th": "ฟฟฟ",
+      "en": "ฟฟฟ",
+      "zh": "ฟฟฟ"
+    },
+    "province": {
+      "th": "เชียงใหม่",
+      "en": "Chiang Mai",
+      "zh": "清迈"
+    },
+    "category": {
+      "th": "ธรรมชาติและภูเขา",
+      "en": "Nature & Mountains",
+      "zh": "自然与山脉"
+    },
+    "categoryId": "nature",
+    "region": {
+      "th": "ภาคเหนือ",
+      "en": "Northern Thailand",
+      "zh": "泰国北部"
+    },
+    "regionId": "north",
+    "description": {
+      "th": "ฟฟฟ",
+      "en": "ฟฟฟ",
+      "zh": "ฟฟฟ"
+    },
+    "hours": "08:00 - 17:00",
+    "price": {
+      "th": "เข้าชมฟรี",
+      "en": "เข้าชมฟรี",
+      "zh": "เข้าชมฟรี"
+    },
+    "googleMapsUrl": "https://maps.app.goo.gl/qiFYpXbeetCaLTde6",
+    "images": [
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80"
+    ],
+    "submittedBy": {
+      "userId": "AWFA68YeaWbZR7XMcwH3C0uqskf1",
+      "userName": "0013_คฑาวุธ ไชยระ",
+      "email": "s67122250013@ssru.ac.th"
+    },
+    "status": "approved",
+    "submittedAt": "2026-08-22T18:32:41.745Z",
+    "approvedAt": "2026-08-22T18:32:53.816Z",
+    "approvedPlaceId": 201
   }
 ]
