@@ -46,6 +46,7 @@ export interface Place {
   contact?: string;
   tags?: string[];
   createdAt?: string;
+  sourceSubmissionId?: string;
 }
 
 export interface Review {
@@ -82,9 +83,15 @@ export interface PendingPlace {
     userName: string;
     email: string;
   };
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'deleted';
   submittedAt: string;
   createdAt?: string;
+  approvedAt?: string;
+  approvedPlaceId?: number;
+  deletedAt?: string;
+  deletedPlaceId?: number;
+  deletedBy?: string;
+  adminMessage?: string;
 }
 
 export interface User {
