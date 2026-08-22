@@ -36,6 +36,15 @@ function AppContent() {
       }
     }
 
+    // /admin is now the single Admin shell.
+    // Keep the old /admin/places URL backward-compatible by normalizing it
+    // to /admin without a full page navigation.
+    if (pathname === '/admin/places') {
+      window.history.replaceState({}, '', '/admin');
+      setCurrentView(isAdmin ? 'admin' : 'admin_login');
+      return;
+    }
+
     if (pathname === '/admin' || pathname === '/admin/login' || viewParam === 'admin') {
       setCurrentView(isAdmin ? 'admin' : 'admin_login');
     }
