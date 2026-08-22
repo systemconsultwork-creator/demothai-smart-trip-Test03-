@@ -2,20 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { Place, Review } from '../types';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
-import { 
-  X, 
-  Star, 
-  Heart, 
-  Share2, 
-  MapPin, 
-  Clock, 
-  DollarSign, 
-  ExternalLink, 
-  Phone, 
-  Compass, 
-  Send, 
-  Check, 
-  Globe2, 
+import {
+  X,
+  Star,
+  Heart,
+  Share2,
+  MapPin,
+  Clock,
+  DollarSign,
+  ExternalLink,
+  Phone,
+  Compass,
+  Send,
+  Check,
+  Globe2,
   MessageSquare,
   ChevronLeft,
   ChevronRight,
@@ -29,15 +29,15 @@ interface PlaceDetailModalProps {
 }
 
 export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ placeId, onClose }) => {
-  const { 
-    getLocalized, 
-    lang, 
-    t, 
-    favorites, 
-    toggleFavorite, 
-    user, 
+  const {
+    getLocalized,
+    lang,
+    t,
+    favorites,
+    toggleFavorite,
+    user,
     setIsAuthModalOpen,
-    showToast 
+    showToast
   } = useApp();
 
   const [place, setPlace] = useState<Place | null>(null);
@@ -143,7 +143,7 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ placeId, onC
 
   return (
     <AnimatePresence>
-      <div 
+      <div
         id="place-detail-modal"
         className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto bg-slate-900/40 backdrop-blur-xs"
         onClick={onClose}
@@ -192,7 +192,7 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ placeId, onC
             </div>
           ) : (
             <div className="overflow-y-auto flex-1 custom-scrollbar">
-              
+
               {/* Image Gallery Hero Slider */}
               <div className="relative aspect-[16/9] sm:aspect-[21/9] w-full bg-slate-100 overflow-hidden">
                 <img
@@ -255,7 +255,7 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ placeId, onC
 
               {/* Modal Body Container */}
               <div className="p-6 sm:p-8 space-y-8">
-                
+
                 {/* Title & Metadata Header */}
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -377,8 +377,16 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ placeId, onC
                   </div>
 
                   {(() => {
-                    const mapUrl = place.location?.map_url || (place.lat && place.lng ? `https://www.google.com/maps?q=${place.lat},${place.lng}` : undefined);
+                    const legacyPlace = place as Place & { location?: { map_url?: string } };
+                    const mapUrl =
+                      place.googleMapsUrl?.trim() ||
+                      legacyPlace.location?.map_url?.trim() ||
+                      (Number.isFinite(place.lat) && Number.isFinite(place.lng)
+                        ? `https://www.google.com/maps?q=${place.lat},${place.lng}`
+                        : undefined);
+
                     if (!mapUrl) return null;
+
                     return (
                       <a
                         href={mapUrl}
@@ -417,8 +425,8 @@ export const PlaceDetailModal: React.FC<PlaceDetailModalProps> = ({ placeId, onC
                             onClick={() => setRatingInput(star)}
                             className="p-1 text-slate-300 hover:scale-110 transition-transform"
                           >
-                            <Star 
-                              className={`w-5 h-5 ${star <= ratingInput ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} 
+                            <Star
+                              className={`w-5 h-5 ${star <= ratingInput ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`}
                             />
                           </button>
                         ))}
