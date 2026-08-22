@@ -8,17 +8,13 @@ const PORT = 3000;
 
 app.use(express.json());
 
-// Helper for JSON files
 const dataDir = path.join(process.cwd(), 'backend', 'data');
 
 function readJsonFile(filename: string) {
   try {
     const filePath = path.join(dataDir, filename);
-    if (!fs.existsSync(filePath)) {
-      return [];
-    }
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
+    if (!fs.existsSync(filePath)) return [];
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch (err) {
     console.error(`Error reading ${filename}:`, err);
     return [];
@@ -36,30 +32,46 @@ function writeJsonFile(filename: string, data: any) {
   }
 }
 
-// ---------------- AUTH MIDDLEWARE ----------------
+function isGoogleMapsUrl(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return false;
+
+  try {
+    const url = new URL(value.trim());
+    if (!['http:', 'https:'].includes(url.protocol)) return false;
+
+    return [
+      'maps.app.goo.gl',
+      'www.google.com',
+      'google.com',
+      'maps.google.com',
+      'goo.gl',
+    ].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function getGoogleMapsUrl(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
   const role = req.headers['x-user-role'];
   const email = req.headers['x-user-email'];
   const authHeader = req.headers['authorization'];
 
-  if (role === 'admin') {
-    return next();
-  }
+  if (role === 'admin') return next();
 
   const users = readJsonFile('users.json');
 
   if (email && typeof email === 'string') {
     const user = users.find((u: any) => u.email === email);
-    if (user && user.role === 'admin') {
-      return next();
-    }
+    if (user && user.role === 'admin') return next();
   }
 
   if (authHeader && typeof authHeader === 'string') {
     const token = authHeader.replace('Bearer ', '');
-    if (token.includes('usr-admin')) {
-      return next();
-    }
+    if (token.includes('usr-admin')) return next();
   }
 
   return res.status(403).json({
@@ -68,36 +80,26 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
   });
 }
 
-// ---------------- API ROUTES ----------------
-
-// Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'thai-smart-trip-api', timestamp: new Date().toISOString() });
 });
 
-// Categories
 app.get('/api/categories', (req, res) => {
-  const categories = readJsonFile('categories.json');
-  res.json(categories);
+  res.json(readJsonFile('categories.json'));
 });
 
-// Provinces
 app.get('/api/provinces', (req, res) => {
-  const provinces = readJsonFile('provinces.json');
-  res.json(provinces);
+  res.json(readJsonFile('provinces.json'));
 });
 
-// Places List & Filtering
 app.get('/api/places', (req, res) => {
   const places = readJsonFile('places.json');
   const { q, category, region, province, minRating, sort, featured, popular, recommended, limit } = req.query;
-
   let filtered = [...places];
 
-  // Search query (matches TH, EN, ZH names or descriptions or provinces)
   if (q && typeof q === 'string') {
     const query = q.toLowerCase().trim();
-    filtered = filtered.filter(p => {
+    filtered = filtered.filter((p: any) => {
       const nameTh = p.name?.th?.toLowerCase() || '';
       const nameEn = p.name?.en?.toLowerCase() || '';
       const nameZh = p.name?.zh?.toLowerCase() || '';
@@ -106,86 +108,63 @@ app.get('/api/places', (req, res) => {
       const descTh = p.description?.th?.toLowerCase() || '';
       const descEn = p.description?.en?.toLowerCase() || '';
       return nameTh.includes(query) || nameEn.includes(query) || nameZh.includes(query) ||
-             provTh.includes(query) || provEn.includes(query) || descTh.includes(query) || descEn.includes(query);
+        provTh.includes(query) || provEn.includes(query) || descTh.includes(query) || descEn.includes(query);
     });
   }
 
-  // Category filter
   if (category && typeof category === 'string' && category !== 'all') {
-    filtered = filtered.filter(p => p.categoryId === category);
+    filtered = filtered.filter((p: any) => p.categoryId === category);
   }
-
-  // Region filter
   if (region && typeof region === 'string' && region !== 'all') {
-    filtered = filtered.filter(p => p.regionId === region);
+    filtered = filtered.filter((p: any) => p.regionId === region);
   }
-
-  // Province filter
   if (province && typeof province === 'string' && province !== 'all') {
-    filtered = filtered.filter(p => p.province?.th === province || p.province?.en === province);
+    filtered = filtered.filter((p: any) => p.province?.th === province || p.province?.en === province);
   }
-
-  // Minimum Rating
   if (minRating) {
     const min = parseFloat(minRating as string);
-    if (!isNaN(min)) {
-      filtered = filtered.filter(p => (p.rating || 0) >= min);
-    }
+    if (!isNaN(min)) filtered = filtered.filter((p: any) => (p.rating || 0) >= min);
   }
+  if (featured === 'true') filtered = filtered.filter((p: any) => p.featured);
+  if (popular === 'true') filtered = filtered.filter((p: any) => p.popular);
+  if (recommended === 'true') filtered = filtered.filter((p: any) => p.recommended);
 
-  // Featured / Popular / Recommended flags
-  if (featured === 'true') {
-    filtered = filtered.filter(p => p.featured);
-  }
-  if (popular === 'true') {
-    filtered = filtered.filter(p => p.popular);
-  }
-  if (recommended === 'true') {
-    filtered = filtered.filter(p => p.recommended);
-  }
-
-  // Sorting
   if (sort === 'rating') {
-    filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    filtered.sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0));
   } else if (sort === 'popular') {
-    filtered.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+    filtered.sort((a: any, b: any) => (b.reviewCount || 0) - (a.reviewCount || 0));
   } else if (sort === 'name') {
-    filtered.sort((a, b) => (a.name?.th || '').localeCompare(b.name?.th || ''));
+    filtered.sort((a: any, b: any) => (a.name?.th || '').localeCompare(b.name?.th || ''));
   }
 
-  // Limit
   if (limit) {
     const l = parseInt(limit as string, 10);
-    if (!isNaN(l) && l > 0) {
-      filtered = filtered.slice(0, l);
-    }
+    if (!isNaN(l) && l > 0) filtered = filtered.slice(0, l);
   }
 
-  res.json({
-    total: filtered.length,
-    places: filtered
-  });
+  res.json({ total: filtered.length, places: filtered });
 });
 
-// Single Place
 app.get('/api/places/:id', (req, res) => {
   const places = readJsonFile('places.json');
   const placeId = parseInt(req.params.id, 10);
   const place = places.find((p: any) => p.id === placeId);
-  if (!place) {
-    return res.status(404).json({ error: 'Place not found' });
-  }
+  if (!place) return res.status(404).json({ error: 'Place not found' });
   res.json(place);
 });
 
-// Admin Add Place
 app.post('/api/places', requireAdmin, (req, res) => {
+  const googleMapsUrl = getGoogleMapsUrl(req.body?.googleMapsUrl);
+  if (!isGoogleMapsUrl(googleMapsUrl)) {
+    return res.status(400).json({ error: 'A valid Google Maps URL is required.' });
+  }
+
   const places = readJsonFile('places.json');
   const newId = places.length > 0 ? Math.max(...places.map((p: any) => p.id || 0)) + 1 : 1;
-  
   const newPlace = {
     id: newId,
     ...req.body,
+    googleMapsUrl,
     rating: req.body.rating || 5.0,
     reviewCount: req.body.reviewCount || 0,
     createdAt: new Date().toISOString()
@@ -196,19 +175,29 @@ app.post('/api/places', requireAdmin, (req, res) => {
   res.status(201).json(newPlace);
 });
 
-// Admin Update Place
 app.put('/api/places/:id', requireAdmin, (req, res) => {
   const places = readJsonFile('places.json');
   const placeId = parseInt(req.params.id, 10);
   const index = places.findIndex((p: any) => p.id === placeId);
-  
-  if (index === -1) {
-    return res.status(404).json({ error: 'Place not found' });
+  if (index === -1) return res.status(404).json({ error: 'Place not found' });
+
+  const submittedGoogleMapsUrl = req.body?.googleMapsUrl;
+  const existingGoogleMapsUrl = getGoogleMapsUrl(
+    places[index].googleMapsUrl || places[index].location?.map_url
+  );
+  const googleMapsUrl = submittedGoogleMapsUrl === undefined
+    ? existingGoogleMapsUrl
+    : getGoogleMapsUrl(submittedGoogleMapsUrl);
+
+  // Existing legacy places may still have no map URL. Do not break editing them.
+  if (googleMapsUrl && !isGoogleMapsUrl(googleMapsUrl)) {
+    return res.status(400).json({ error: 'A valid Google Maps URL is required.' });
   }
 
   places[index] = {
     ...places[index],
     ...req.body,
+    ...(googleMapsUrl ? { googleMapsUrl } : {}),
     id: placeId
   };
 
@@ -216,39 +205,32 @@ app.put('/api/places/:id', requireAdmin, (req, res) => {
   res.json(places[index]);
 });
 
-// Admin Delete Place
 app.delete('/api/places/:id', requireAdmin, (req, res) => {
   const places = readJsonFile('places.json');
   const placeId = parseInt(req.params.id, 10);
   const filtered = places.filter((p: any) => p.id !== placeId);
-  
   writeJsonFile('places.json', filtered);
   res.json({ success: true, message: `Place ${placeId} deleted successfully` });
 });
 
-// Reviews
 app.get('/api/reviews', (req, res) => {
   const reviews = readJsonFile('reviews.json');
   const { placeId, userId } = req.query;
-
   let filtered = [...reviews];
+
   if (placeId) {
     const pId = parseInt(placeId as string, 10);
     filtered = filtered.filter((r: any) => r.placeId === pId);
   }
-  if (userId) {
-    filtered = filtered.filter((r: any) => r.userId === userId);
-  }
+  if (userId) filtered = filtered.filter((r: any) => r.userId === userId);
 
-  // Sort newest first
-  filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  filtered.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   res.json(filtered);
 });
 
 app.post('/api/reviews', (req, res) => {
   const reviews = readJsonFile('reviews.json');
   const { placeId, rating, comment, userName, userId, userAvatar, language } = req.body;
-
   if (!placeId || !rating || !comment) {
     return res.status(400).json({ error: 'Missing required review fields' });
   }
@@ -268,7 +250,6 @@ app.post('/api/reviews', (req, res) => {
   reviews.push(newReview);
   writeJsonFile('reviews.json', reviews);
 
-  // Update place review count & average rating in places.json
   const places = readJsonFile('places.json');
   const placeIndex = places.findIndex((p: any) => p.id === newReview.placeId);
   if (placeIndex !== -1) {
@@ -284,47 +265,53 @@ app.post('/api/reviews', (req, res) => {
 
 app.delete('/api/reviews/:id', (req, res) => {
   const reviews = readJsonFile('reviews.json');
-  const reviewId = req.params.id;
-  const filtered = reviews.filter((r: any) => r.id !== reviewId);
+  const filtered = reviews.filter((r: any) => r.id !== req.params.id);
   writeJsonFile('reviews.json', filtered);
   res.json({ success: true });
 });
 
-// Submissions (Pending Places)
 app.get('/api/submissions', (req, res) => {
   const submissions = readJsonFile('pendingPlaces.json');
   const { userId } = req.query;
   let filtered = [...submissions];
-  if (userId) {
-    filtered = filtered.filter((s: any) => s.submittedBy?.userId === userId);
-  }
+  if (userId) filtered = filtered.filter((s: any) => s.submittedBy?.userId === userId);
   res.json(filtered);
 });
 
 app.post('/api/submissions', (req, res) => {
+  const googleMapsUrl = getGoogleMapsUrl(req.body?.googleMapsUrl);
+  if (!isGoogleMapsUrl(googleMapsUrl)) {
+    return res.status(400).json({ error: 'A valid Google Maps URL is required.' });
+  }
+
   const submissions = readJsonFile('pendingPlaces.json');
   const newSubmission = {
     id: `pend-${Date.now()}`,
     ...req.body,
+    googleMapsUrl,
     status: 'pending',
     submittedAt: new Date().toISOString()
   };
+
   submissions.push(newSubmission);
   writeJsonFile('pendingPlaces.json', submissions);
   res.status(201).json(newSubmission);
 });
 
-// Approve Submission -> Move into places.json
 app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
   const submissions = readJsonFile('pendingPlaces.json');
   const submissionId = req.params.id;
   const subIndex = submissions.findIndex((s: any) => s.id === submissionId);
-
-  if (subIndex === -1) {
-    return res.status(404).json({ error: 'Submission not found' });
-  }
+  if (subIndex === -1) return res.status(404).json({ error: 'Submission not found' });
 
   const sub = submissions[subIndex];
+  const googleMapsUrl = getGoogleMapsUrl(sub.googleMapsUrl || sub.location?.map_url);
+
+  // New submissions always have a URL. Legacy demo submissions may not.
+  if (googleMapsUrl && !isGoogleMapsUrl(googleMapsUrl)) {
+    return res.status(400).json({ error: 'Submission contains an invalid Google Maps URL.' });
+  }
+
   const places = readJsonFile('places.json');
   const newId = places.length > 0 ? Math.max(...places.map((p: any) => p.id || 0)) + 1 : 1;
 
@@ -344,6 +331,7 @@ app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
     lat: sub.lat || 13.7563,
     lng: sub.lng || 100.5018,
     images: sub.images?.length > 0 ? sub.images : ['https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=1000&q=80'],
+    ...(googleMapsUrl ? { googleMapsUrl } : {}),
     address: {
       th: `${sub.province?.th || ''}, ประเทศไทย`,
       en: `${sub.province?.en || ''}, Thailand`,
@@ -357,35 +345,32 @@ app.post('/api/submissions/:id/approve', requireAdmin, (req, res) => {
   places.push(approvedPlace);
   writeJsonFile('places.json', places);
 
-  // Mark submission as approved
-  submissions[subIndex].status = 'approved';
+  submissions[subIndex] = {
+    ...submissions[subIndex],
+    ...(googleMapsUrl ? { googleMapsUrl } : {}),
+    status: 'approved'
+  };
   writeJsonFile('pendingPlaces.json', submissions);
 
   res.json({ success: true, place: approvedPlace });
 });
 
-// Reject Submission
 app.post('/api/submissions/:id/reject', requireAdmin, (req, res) => {
   const submissions = readJsonFile('pendingPlaces.json');
   const submissionId = req.params.id;
   const subIndex = submissions.findIndex((s: any) => s.id === submissionId);
-
-  if (subIndex === -1) {
-    return res.status(404).json({ error: 'Submission not found' });
-  }
+  if (subIndex === -1) return res.status(404).json({ error: 'Submission not found' });
 
   submissions[subIndex].status = 'rejected';
   writeJsonFile('pendingPlaces.json', submissions);
   res.json({ success: true, message: 'Submission rejected' });
 });
 
-// Admin Stats
 app.get('/api/admin/stats', requireAdmin, (req, res) => {
   const places = readJsonFile('places.json');
   const submissions = readJsonFile('pendingPlaces.json');
   const reviews = readJsonFile('reviews.json');
   const users = readJsonFile('users.json');
-
   const pendingCount = submissions.filter((s: any) => s.status === 'pending').length;
 
   const regionalStats = {
@@ -404,10 +389,8 @@ app.get('/api/admin/stats', requireAdmin, (req, res) => {
   });
 });
 
-// Users and Auth Simulation
 app.get('/api/users', (req, res) => {
-  const users = readJsonFile('users.json');
-  res.json(users);
+  res.json(readJsonFile('users.json'));
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -416,7 +399,6 @@ app.post('/api/auth/login', (req, res) => {
   let user = users.find((u: any) => u.email === email);
 
   if (!user) {
-    // If not found in demo, create a default user profile
     const isSpecialAdmin = email.includes('admin');
     user = {
       id: isSpecialAdmin ? 'usr-admin' : `usr-${Date.now()}`,
@@ -431,20 +413,14 @@ app.post('/api/auth/login', (req, res) => {
     writeJsonFile('users.json', users);
   }
 
-  res.json({
-    user,
-    token: `jwt-token-${user.id}-${Date.now()}`
-  });
+  res.json({ user, token: `jwt-token-${user.id}-${Date.now()}` });
 });
 
 app.post('/api/auth/register', (req, res) => {
   const { name, email, role } = req.body;
   const users = readJsonFile('users.json');
-  
   const existing = users.find((u: any) => u.email === email);
-  if (existing) {
-    return res.status(400).json({ error: 'Email already registered' });
-  }
+  if (existing) return res.status(400).json({ error: 'Email already registered' });
 
   const newUser = {
     id: `usr-${Date.now()}`,
@@ -458,41 +434,26 @@ app.post('/api/auth/register', (req, res) => {
 
   users.push(newUser);
   writeJsonFile('users.json', users);
-
-  res.status(201).json({
-    user: newUser,
-    token: `jwt-token-${newUser.id}-${Date.now()}`
-  });
+  res.status(201).json({ user: newUser, token: `jwt-token-${newUser.id}-${Date.now()}` });
 });
 
-// Toggle Favorite
 app.post('/api/users/favorite', (req, res) => {
   const { userId, placeId } = req.body;
   const users = readJsonFile('users.json');
   const userIndex = users.findIndex((u: any) => u.id === userId);
-
-  if (userIndex === -1) {
-    return res.status(404).json({ error: 'User not found' });
-  }
+  if (userIndex === -1) return res.status(404).json({ error: 'User not found' });
 
   const user = users[userIndex];
   const pId = parseInt(placeId, 10);
   const favs = new Set(user.favorites || []);
-
-  if (favs.has(pId)) {
-    favs.delete(pId);
-  } else {
-    favs.add(pId);
-  }
+  if (favs.has(pId)) favs.delete(pId);
+  else favs.add(pId);
 
   user.favorites = Array.from(favs);
   users[userIndex] = user;
   writeJsonFile('users.json', users);
-
   res.json({ favorites: user.favorites });
 });
-
-// ---------------- SERVER START & VITE ----------------
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
