@@ -3,31 +3,25 @@ import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { Place, PendingPlace } from '../types';
 import { PlaceCard } from '../components/PlaceCard';
-import { 
-  User as UserIcon, 
-  Heart, 
-  Send, 
-  LogOut, 
-  ShieldCheck, 
-  MapPin, 
-  Sparkles,
-  Compass,
-  ArrowRight
+import {
+  Heart,
+  Send,
+  LogOut,
+  ShieldCheck,
+  MapPin,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 
 export const ProfileView: React.FC = () => {
-  const { 
-    user, 
-    setUser, 
-    favorites, 
-    t, 
-    lang, 
-    getLocalized, 
-    setCurrentView, 
-    showToast, 
-    setIsAuthModalOpen,
-    setAuthModalMode,
-    setAuthPromptReason
+  const {
+    user,
+    setUser,
+    favorites,
+    t,
+    setCurrentView,
+    showToast,
+    setIsAuthModalOpen
   } = useApp();
 
   const [favPlaces, setFavPlaces] = useState<Place[]>([]);
@@ -39,16 +33,14 @@ export const ProfileView: React.FC = () => {
     if (!user) return;
 
     setLoading(true);
-    // Fetch all places and filter favorites
     Promise.all([
       api.getPlaces({ limit: 200 }),
-      api.getSubmissions()
+      api.getSubmissions(user.id)
     ])
       .then(([allPlaces, subs]) => {
         const favs = allPlaces.places.filter(p => favorites.includes(p.id));
         setFavPlaces(favs);
-        const mySubs = subs.filter(s => s.submittedBy.userId === user.id || s.submittedBy.email === user.email);
-        setUserSubmissions(mySubs);
+        setUserSubmissions(subs);
       })
       .catch(err => console.error('Failed to load profile data', err))
       .finally(() => setLoading(false));
@@ -70,9 +62,7 @@ export const ProfileView: React.FC = () => {
         </div>
         <div className="flex items-center justify-center pt-2">
           <button
-            onClick={() => {
-              setIsAuthModalOpen(true);
-            }}
+            onClick={() => setIsAuthModalOpen(true)}
             className="w-full sm:w-auto min-w-[200px] px-8 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>{t('auth.login_btn')}</span>
@@ -81,6 +71,8 @@ export const ProfileView: React.FC = () => {
       </div>
     );
   }
+
+  const deletedSubmissions = userSubmissions.filter(sub => sub.status === 'deleted');
 
   const handleLogout = () => {
     api.logout();
@@ -91,7 +83,6 @@ export const ProfileView: React.FC = () => {
 
   return (
     <div id="profile-view" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-      
       {/* Profile Card Header */}
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-md flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
@@ -141,6 +132,25 @@ export const ProfileView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Admin deletion notification */}
+      {deletedSubmissions.length > 0 && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 w-9 h-9 rounded-xl bg-white border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-rose-900">
+                มีสถานที่ของคุณถูกลบโดยผู้ดูแลระบบ {deletedSubmissions.length} รายการ
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-rose-800">
+                ระบบยังเก็บประวัติการส่งสถานที่ไว้ในบัญชีของคุณ แต่สถานที่ดังกล่าวจะไม่แสดงในระบบท่องเที่ยวแล้ว
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 pb-4">
@@ -209,29 +219,65 @@ export const ProfileView: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {userSubmissions.map((sub) => (
-              <div key={sub.id} className="p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                    sub.status === 'pending' ? 'bg-amber-100 text-amber-800' : sub.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                  }`}>
-                    {sub.status}
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    {new Date(sub.submittedAt || Date.now()).toLocaleDateString()}
-                  </span>
+            {userSubmissions.map((sub) => {
+              const isDeleted = sub.status === 'deleted';
+              const statusClass =
+                sub.status === 'pending'
+                  ? 'bg-amber-100 text-amber-800'
+                  : sub.status === 'approved'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : sub.status === 'deleted'
+                      ? 'bg-rose-100 text-rose-800'
+                      : 'bg-slate-100 text-slate-700';
+
+              return (
+                <div
+                  key={sub.id}
+                  className={`p-5 rounded-2xl bg-white border shadow-2xs space-y-3 ${
+                    isDeleted ? 'border-rose-200 bg-rose-50/30' : 'border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase flex items-center gap-1 ${statusClass}`}>
+                      {isDeleted && <Trash2 className="w-3 h-3" />}
+                      {isDeleted ? 'ADMIN DELETED' : sub.status}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      {new Date(sub.submittedAt || Date.now()).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  <h4 className="text-base font-bold text-slate-900">{sub.name.th}</h4>
+                  <p className="text-xs text-slate-500 line-clamp-2">{sub.description.th}</p>
+
+                  <div className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {sub.province.th} • {sub.category.th}
+                  </div>
+
+                  {isDeleted && (
+                    <div className="rounded-xl border border-rose-200 bg-white px-3.5 py-3">
+                      <p className="text-xs font-bold text-rose-900">
+                        {sub.adminMessage || 'สถานที่นี้ถูกลบโดยผู้ดูแลระบบ'}
+                      </p>
+                      {sub.deletedAt && (
+                        <p className="mt-1 text-[10px] text-rose-700">
+                          ลบเมื่อ {new Date(sub.deletedAt).toLocaleString()}
+                          {sub.deletedBy ? ` • ${sub.deletedBy}` : ''}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <h4 className="text-base font-bold text-slate-900">{sub.name.th}</h4>
-                <p className="text-xs text-slate-500 line-clamp-2">{sub.description.th}</p>
-                <div className="text-[11px] text-slate-500 font-medium">
-                  {sub.province.th} • {sub.category.th}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )
       )}
 
+      {loading && (
+        <div className="text-center text-xs text-slate-400">กำลังโหลดข้อมูล...</div>
+      )}
     </div>
   );
 };
