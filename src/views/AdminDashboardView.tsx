@@ -1,766 +1,491 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  BarChart3,
+  CheckCircle2,
+  Eye,
+  Layers,
+  MessageSquare,
+  ShieldCheck,
+  Trash2,
+  Users,
+  XCircle,
+} from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
-import { Place, PendingPlace, Review, Category } from '../types';
-import { 
-  ShieldCheck, 
-  MapPin, 
-  CheckCircle2, 
-  XCircle, 
-  Trash2, 
-  Edit, 
-  Plus, 
-  Search, 
-  Layers, 
-  MessageSquare, 
-  Users, 
-  BarChart3, 
-  Eye, 
-  Sparkles,
-  AlertCircle,
-  X
-} from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import { PendingPlace, Review, Place } from '../types';
+import { AdminPlacesView } from './AdminPlacesView';
+
+type AdminTab = 'overview' | 'places' | 'pending' | 'reviews';
+
+type AdminStats = {
+  totalPlaces?: number;
+  pendingSubmissions?: number;
+  totalReviews?: number;
+  totalUsers?: number;
+  regionalStats?: {
+    north?: number;
+    central?: number;
+    northeast?: number;
+    south?: number;
+  };
+};
+
+const tabBase =
+  'px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap';
 
 export const AdminDashboardView: React.FC = () => {
-  const { t, lang, getLocalized, showToast, setSelectedPlaceId, user } = useApp();
+  const { t, lang, showToast, setSelectedPlaceId } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'places' | 'pending' | 'reviews'>('overview');
-  const [stats, setStats] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
+  const [stats, setStats] = useState<AdminStats | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
   const [pendingList, setPendingList] = useState<PendingPlace[]>([]);
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
-  const [searchFilter, setSearchFilter] = useState('');
-  const [regionFilter, setRegionFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
-  // Edit / Add Place Modal
-  const [editingPlace, setEditingPlace] = useState<Place | null>(null);
-  const [isAddingNew, setIsAddingNew] = useState(false);
-  const [formPlace, setFormPlace] = useState<Partial<Place>>({});
+  const localized = useCallback(
+    (value?: { th: string; en: string; zh: string }) => {
+      if (!value) return '-';
+      return value[lang] || value.th || value.en || value.zh || '-';
+    },
+    [lang],
+  );
 
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsData, placesData, subsData, revsData] = await Promise.all([
-        api.getAdminStats(),
-        api.getPlaces(),
-        api.getSubmissions(),
-        api.getReviews()
-      ]);
-      setStats(statsData);
-      setPlaces(placesData.places);
-      setPendingList(subsData);
-      setReviewsList(revsData);
-    } catch (err) {
-      console.error('Failed to load admin data', err);
-      showToast('Failed to load admin data', 'error');
+      const [statsData, placesData, submissionsData, reviewsData] =
+        await Promise.all([
+          api.getAdminStats(),
+          api.getPlaces(),
+          api.getSubmissions(),
+          api.getReviews(),
+        ]);
+
+      setStats(statsData as AdminStats);
+      setPlaces(placesData.places || []);
+      setPendingList(submissionsData || []);
+      setReviewsList(reviewsData || []);
+    } catch (error) {
+      console.error('Failed to load admin data', error);
+      showToast('โหลดข้อมูล Admin ไม่สำเร็จ', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     refreshData();
-  }, []);
+  }, [refreshData]);
+
+  const pendingCount = useMemo(
+    () => pendingList.filter((item) => item.status === 'pending').length,
+    [pendingList],
+  );
+
+  const chartData = useMemo(
+    () => [
+      {
+        name: lang === 'th' ? 'เหนือ' : lang === 'zh' ? '北部' : 'North',
+        count: stats?.regionalStats?.north || 0,
+      },
+      {
+        name: lang === 'th' ? 'กลาง' : lang === 'zh' ? '中部' : 'Central',
+        count: stats?.regionalStats?.central || 0,
+      },
+      {
+        name: lang === 'th' ? 'อีสาน' : lang === 'zh' ? '东北部' : 'Northeast',
+        count: stats?.regionalStats?.northeast || 0,
+      },
+      {
+        name: lang === 'th' ? 'ใต้' : lang === 'zh' ? '南部' : 'South',
+        count: stats?.regionalStats?.south || 0,
+      },
+    ],
+    [lang, stats],
+  );
 
   const handleApproveSubmission = async (id: string) => {
     try {
-      const res = await api.approveSubmission(id);
-      showToast(`Approved "${res.place.name.th}" to main database!`, 'success');
-      refreshData();
-    } catch (err) {
-      console.error('Approve failed', err);
-      showToast('Error approving submission', 'error');
+      const result = await api.approveSubmission(id);
+      showToast(
+        `อนุมัติ ${result.place?.name?.th || 'สถานที่'} เรียบร้อยแล้ว`,
+        'success',
+      );
+      await refreshData();
+    } catch (error) {
+      console.error('Approve failed', error);
+      showToast('อนุมัติสถานที่ไม่สำเร็จ', 'error');
     }
   };
 
   const handleRejectSubmission = async (id: string) => {
     try {
       await api.rejectSubmission(id);
-      showToast('Submission rejected', 'info');
-      refreshData();
-    } catch (err) {
-      console.error('Reject failed', err);
-      showToast('Error rejecting submission', 'error');
-    }
-  };
-
-  const handleDeletePlace = async (id: number, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
-    try {
-      await api.deletePlace(id);
-      showToast(`Deleted place #${id}`, 'success');
-      refreshData();
-    } catch (err) {
-      console.error('Delete failed', err);
-      showToast('Error deleting place', 'error');
+      showToast('ปฏิเสธคำขอเรียบร้อยแล้ว', 'success');
+      await refreshData();
+    } catch (error) {
+      console.error('Reject failed', error);
+      showToast('ปฏิเสธคำขอไม่สำเร็จ', 'error');
     }
   };
 
   const handleDeleteReview = async (id: string) => {
+    if (!window.confirm('ต้องการลบรีวิวนี้หรือไม่?')) return;
+
     try {
       await api.deleteReview(id);
-      showToast('Review removed', 'success');
-      refreshData();
-    } catch (err) {
-      console.error('Delete review failed', err);
-      showToast('Error deleting review', 'error');
+      showToast('ลบรีวิวเรียบร้อยแล้ว', 'success');
+      await refreshData();
+    } catch (error) {
+      console.error('Delete review failed', error);
+      showToast('ลบรีวิวไม่สำเร็จ', 'error');
     }
   };
 
-  const handleSavePlace = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingPlace) {
-        await api.updatePlace(editingPlace.id, formPlace);
-        showToast('Place updated successfully!', 'success');
-      } else {
-        await api.createPlace(formPlace);
-        showToast('New destination added successfully!', 'success');
-      }
-      setEditingPlace(null);
-      setIsAddingNew(false);
-      refreshData();
-    } catch (err) {
-      console.error('Save place failed', err);
-      showToast('Error saving destination', 'error');
-    }
-  };
-
-  const filteredPlaces = places.filter(p => {
-    const matchesSearch = !searchFilter || 
-      p.name?.th?.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      p.name?.en?.toLowerCase().includes(searchFilter.toLowerCase()) ||
-      p.province?.th?.toLowerCase().includes(searchFilter.toLowerCase());
-    const matchesRegion = regionFilter === 'all' || p.regionId === regionFilter;
-    return matchesSearch && matchesRegion;
-  });
-
-  const chartData = stats?.regionalStats ? [
-    { name: lang === 'th' ? 'ภาคเหนือ' : 'North', count: stats.regionalStats.north, color: '#10B981' },
-    { name: lang === 'th' ? 'ภาคกลาง' : 'Central', count: stats.regionalStats.central, color: '#F59E0B' },
-    { name: lang === 'th' ? 'ภาคอีสาน' : 'Isan', count: stats.regionalStats.northeast, color: '#F97316' },
-    { name: lang === 'th' ? 'ภาคใต้' : 'South', count: stats.regionalStats.south, color: '#06B6D4' },
-  ] : [];
+  const totalPlaces = stats?.totalPlaces ?? places.length;
+  const totalReviews = stats?.totalReviews ?? reviewsList.length;
+  const totalUsers = stats?.totalUsers ?? 0;
+  const pendingTotal = stats?.pendingSubmissions ?? pendingCount;
 
   return (
-    <div id="admin-dashboard-view" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shadow-xs">
+    <div
+      id="admin-dashboard-view"
+      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6"
+    >
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-12 h-12 shrink-0 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
             <ShieldCheck className="w-7 h-7" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
                 {t('admin.dashboard')}
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold uppercase shadow-2xs">
+              <span className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold uppercase">
                 Admin Panel
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
               Thai Smart Trip Content Management & Moderation Center
             </p>
           </div>
         </div>
 
-        {/* Tab Buttons */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-100 border border-slate-200">
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 border border-slate-200 overflow-x-auto max-w-full">
           <button
+            type="button"
             onClick={() => setActiveTab('overview')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs ${
-              activeTab === 'overview' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`${tabBase} ${
+              activeTab === 'overview'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {t('admin.dashboard')}
+            แดชบอร์ดภาพรวม
           </button>
+
           <button
+            type="button"
             onClick={() => setActiveTab('places')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs ${
-              activeTab === 'places' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`${tabBase} ${
+              activeTab === 'places'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {t('admin.manage_places')} ({places.length})
+            จัดการสถานที่ท่องเที่ยว ({places.length})
           </button>
+
           <button
+            type="button"
             onClick={() => setActiveTab('pending')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all relative shadow-2xs ${
-              activeTab === 'pending' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`${tabBase} relative ${
+              activeTab === 'pending'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {t('admin.pending_approvals')}
-            {pendingList.filter(s => s.status === 'pending').length > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px]">
-                {pendingList.filter(s => s.status === 'pending').length}
+            คำขออนุมัติสถานที่
+            {pendingCount > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[10px] leading-none">
+                {pendingCount}
               </span>
             )}
           </button>
+
           <button
+            type="button"
             onClick={() => setActiveTab('reviews')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs ${
-              activeTab === 'reviews' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            className={`${tabBase} ${
+              activeTab === 'reviews'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            {t('admin.manage_reviews')} ({reviewsList.length})
+            จัดการรีวิว ({reviewsList.length})
           </button>
         </div>
       </div>
 
-      {/* TAB 1: OVERVIEW */}
-      {activeTab === 'overview' && (
-        <div className="space-y-8">
-          
-          {/* Stats Metric Cards */}
+      {loading && activeTab !== 'places' ? (
+        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center text-sm text-slate-500">
+          กำลังโหลดข้อมูล Admin...
+        </div>
+      ) : null}
+
+      {!loading && activeTab === 'overview' && (
+        <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-2">
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between text-slate-500">
-                <span className="text-xs font-semibold uppercase">{t('admin.total_places')}</span>
+                <span className="text-xs font-semibold uppercase">สถานที่ทั้งหมด</span>
                 <Layers className="w-5 h-5 text-emerald-600" />
               </div>
-              <p className="text-3xl font-extrabold text-slate-900">{stats?.totalPlaces || places.length}</p>
-              <p className="text-xs text-emerald-700 font-medium">100% Curated & GPS Verified</p>
+              <p className="text-3xl font-extrabold text-slate-900 mt-2">{totalPlaces}</p>
+              <p className="text-xs text-emerald-700 mt-1">ฐานข้อมูลสถานที่ท่องเที่ยว</p>
             </div>
 
-            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-2">
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between text-slate-500">
-                <span className="text-xs font-semibold uppercase">{t('admin.pending_count')}</span>
+                <span className="text-xs font-semibold uppercase">รออนุมัติ</span>
                 <AlertCircle className="w-5 h-5 text-amber-500" />
               </div>
-              <p className="text-3xl font-extrabold text-amber-600">{stats?.pendingSubmissions || 0}</p>
-              <p className="text-xs text-slate-500">Awaiting editorial review</p>
+              <p className="text-3xl font-extrabold text-amber-600 mt-2">{pendingTotal}</p>
+              <p className="text-xs text-slate-500 mt-1">คำขอเพิ่มสถานที่ใหม่</p>
             </div>
 
-            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-2">
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between text-slate-500">
-                <span className="text-xs font-semibold uppercase">{t('admin.total_reviews')}</span>
+                <span className="text-xs font-semibold uppercase">รีวิวทั้งหมด</span>
                 <MessageSquare className="w-5 h-5 text-teal-600" />
               </div>
-              <p className="text-3xl font-extrabold text-teal-700">{stats?.totalReviews || reviewsList.length}</p>
-              <p className="text-xs text-slate-500">User reviews & ratings</p>
+              <p className="text-3xl font-extrabold text-teal-700 mt-2">{totalReviews}</p>
+              <p className="text-xs text-slate-500 mt-1">รีวิวและคะแนนจากสมาชิก</p>
             </div>
 
-            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-2">
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between text-slate-500">
-                <span className="text-xs font-semibold uppercase">{t('admin.total_users')}</span>
+                <span className="text-xs font-semibold uppercase">สมาชิก</span>
                 <Users className="w-5 h-5 text-rose-500" />
               </div>
-              <p className="text-3xl font-extrabold text-rose-600">{stats?.totalUsers || 2}</p>
-              <p className="text-xs text-slate-500">Registered member profiles</p>
+              <p className="text-3xl font-extrabold text-rose-600 mt-2">{totalUsers}</p>
+              <p className="text-xs text-slate-500 mt-1">Registered member profiles</p>
             </div>
           </div>
 
-          {/* Regional Analytics Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* Regional Bar Distribution */}
-            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-emerald-700" />
-                  <span>Regional Place Distribution (200 Total)</span>
-                </h3>
-              </div>
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm">
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-4">
+                <BarChart3 className="w-4 h-4 text-emerald-700" />
+                จำนวนสถานที่แยกตามภูมิภาค
+              </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
-                    <XAxis dataKey="name" stroke="#64748B" fontSize={12} />
-                    <YAxis stroke="#64748B" fontSize={12} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E2E8F0', borderRadius: '12px', color: '#0F172A', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} 
-                    />
-                    <Bar dataKey="count" radius={[8, 8, 0, 0]}>
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" fontSize={12} />
+                    <YAxis allowDecimals={false} fontSize={12} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#10B981" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Quick Actions & System Health */}
-            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-5 flex flex-col justify-between">
-              <div className="space-y-3">
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-emerald-700" />
-                  <span>System Health & Quick Links</span>
-                </h3>
-                <div className="space-y-2 text-xs text-slate-600">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span>Database Engine:</span>
-                    <strong className="text-emerald-700 font-mono">200 Verified Entries (JSON Storage)</strong>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span>Language Engines:</span>
-                    <strong className="text-teal-700 font-mono">TH (ไทย) / EN (English) / ZH (中文)</strong>
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span>Server Status:</span>
-                    <strong className="text-cyan-700 font-mono">Port 3000 Ingress Ready</strong>
-                  </div>
-                </div>
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <h3 className="text-base font-bold text-slate-900">สถานะระบบ</h3>
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
+                <p className="text-xs text-slate-500">Database</p>
+                <p className="font-bold text-emerald-700 mt-1">JSON Storage · {totalPlaces} Places</p>
               </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => {
-                    setIsAddingNew(true);
-                    setEditingPlace(null);
-                    setFormPlace({
-                      name: { th: '', en: '', zh: '' },
-                      province: { th: 'เชียงใหม่', en: 'Chiang Mai', zh: '清迈' },
-                      category: { th: 'ธรรมชาติและภูเขา', en: 'Nature & Mountains', zh: '自然与山脉' },
-                      categoryId: 'nature',
-                      region: { th: 'ภาคเหนือ', en: 'Northern Thailand', zh: '泰国北部' },
-                      regionId: 'north',
-                      description: { th: '', en: '', zh: '' },
-                      price: { th: 'เข้าชมฟรี', en: 'Free Entry', zh: '免费入场' },
-                      hours: '08:00 - 17:00',
-                      lat: 18.7883,
-                      lng: 98.9853,
-                      images: ['https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80']
-                    });
-                  }}
-                  className="flex-1 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{t('admin.add_place')}</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('pending')}
-                  className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-colors"
-                >
-                  Review Submissions ({pendingList.filter(s => s.status === 'pending').length})
-                </button>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <p className="text-xs text-slate-500">Languages</p>
+                <p className="font-bold text-slate-800 mt-1">TH / EN / ZH</p>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
+                <p className="text-xs text-slate-500">Admin Session</p>
+                <p className="font-bold text-slate-800 mt-1">Authenticated</p>
               </div>
             </div>
-
           </div>
-
         </div>
       )}
 
-      {/* TAB 2: DESTINATIONS MANAGEMENT */}
       {activeTab === 'places' && (
-        <div className="space-y-6">
-          {/* Action Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3 flex-1">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  placeholder={t('admin.search_places')}
-                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition-colors"
-                />
-              </div>
-
-              <select
-                value={regionFilter}
-                onChange={(e) => setRegionFilter(e.target.value)}
-                className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer transition-colors"
-              >
-                <option value="all">All Regions ({places.length})</option>
-                <option value="north">North (50)</option>
-                <option value="central">Central (50)</option>
-                <option value="northeast">Isan (50)</option>
-                <option value="south">South (50)</option>
-              </select>
-            </div>
-
-            <button
-              onClick={() => {
-                setIsAddingNew(true);
-                setEditingPlace(null);
-                setFormPlace({
-                  name: { th: '', en: '', zh: '' },
-                  province: { th: 'เชียงใหม่', en: 'Chiang Mai', zh: '清迈' },
-                  category: { th: 'ธรรมชาติและภูเขา', en: 'Nature & Mountains', zh: '自然与山脉' },
-                  categoryId: 'nature',
-                  region: { th: 'ภาคเหนือ', en: 'Northern Thailand', zh: '泰国北部' },
-                  regionId: 'north',
-                  description: { th: '', en: '', zh: '' },
-                  price: { th: 'เข้าชมฟรี', en: 'Free Entry', zh: '免费入场' },
-                  hours: '08:00 - 17:00',
-                  lat: 18.7883,
-                  lng: 98.9853,
-                  images: ['https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1000&q=80']
-                });
-              }}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs shrink-0 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('admin.add_place')}</span>
-            </button>
-          </div>
-
-          {/* Places Table */}
-          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600">
-                <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200 text-[11px]">
-                  <tr>
-                    <th className="px-5 py-3.5">ID</th>
-                    <th className="px-5 py-3.5">Destination</th>
-                    <th className="px-5 py-3.5">Province</th>
-                    <th className="px-5 py-3.5">Region</th>
-                    <th className="px-5 py-3.5">Category</th>
-                    <th className="px-5 py-3.5">Rating</th>
-                    <th className="px-5 py-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredPlaces.slice(0, 50).map((place) => (
-                    <tr key={place.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-5 py-3.5 font-mono text-emerald-700 font-bold">#{place.id}</td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={place.images[0] || 'https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=150&q=80'}
-                            alt={place.name.th}
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=150&q=80';
-                            }}
-                            className="w-10 h-10 rounded-lg object-cover bg-slate-100 shrink-0 border border-slate-200"
-                          />
-                          <div>
-                            <p className="font-bold text-slate-900 line-clamp-1">{place.name.th}</p>
-                            <p className="text-[10px] text-slate-500 line-clamp-1">{place.name.en}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-slate-700">{place.province.th}</td>
-                      <td className="px-5 py-3.5 whitespace-nowrap font-medium text-slate-500">
-                        {place.regionId.toUpperCase()}
-                      </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] text-slate-700 font-medium">
-                          {place.category.th}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 whitespace-nowrap font-bold text-amber-600">
-                        ★ {place.rating.toFixed(1)} ({place.reviewCount})
-                      </td>
-                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => setSelectedPlaceId(place.id)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-                            title="Preview destination"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingPlace(place);
-                              setFormPlace({ ...place });
-                              setIsAddingNew(false);
-                            }}
-                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors"
-                            title="Edit destination"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeletePlace(place.id, place.name.th)}
-                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition-colors"
-                            title="Delete destination"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {filteredPlaces.length > 50 && (
-              <div className="p-3 text-center text-xs text-slate-500 bg-slate-50 border-t border-slate-200">
-                Showing first 50 results. Use search filter above to narrow down.
-              </div>
-            )}
-          </div>
+        <div className="space-y-4">
+          <AdminPlacesView />
         </div>
       )}
 
-      {/* TAB 3: PENDING APPROVALS */}
-      {activeTab === 'pending' && (
-        <div className="space-y-6">
-          {pendingList.length === 0 ? (
-            <div className="p-12 text-center bg-slate-50 rounded-3xl border border-slate-200 space-y-2">
-              <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-              <h3 className="text-base font-bold text-slate-900">All Caught Up!</h3>
-              <p className="text-xs text-slate-500">No pending destination submissions at the moment.</p>
+      {!loading && activeTab === 'pending' && (
+        <div className="space-y-4">
+          {pendingCount === 0 ? (
+            <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+              <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-500" />
+              <p className="font-bold text-slate-900 mt-3">ไม่มีคำขอที่รออนุมัติ</p>
+              <p className="text-sm text-slate-500 mt-1">ทุกคำขอได้รับการจัดการแล้ว</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {pendingList.map((sub) => (
-                <div
-                  key={sub.id}
-                  className={`p-6 rounded-3xl bg-white border space-y-4 shadow-sm ${
-                    sub.status === 'pending'
-                      ? 'border-amber-300'
-                      : sub.status === 'approved'
-                      ? 'border-emerald-200 opacity-75'
-                      : 'border-rose-200 opacity-75'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        sub.status === 'pending' ? 'bg-amber-100 text-amber-800' : sub.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                      }`}>
-                        {sub.status}
-                      </span>
-                      <h3 className="text-lg font-bold text-slate-900 mt-1">{sub.name.th}</h3>
-                      <p className="text-xs text-slate-500">{sub.name.en} • {sub.province.th}</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {pendingList
+                .filter((item) => item.status === 'pending')
+                .map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white border border-amber-300 rounded-3xl p-5 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <span className="inline-flex px-2 py-1 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold uppercase">
+                          Pending
+                        </span>
+                        <h3 className="text-lg font-extrabold text-slate-900 mt-2">
+                          {localized(item.name)}
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {localized(item.province)} · {localized(item.category)}
+                        </p>
+                      </div>
+
+                      {item.images?.[0] && (
+                        <img
+                          src={item.images[0]}
+                          alt={item.name.th}
+                          className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0"
+                        />
+                      )}
                     </div>
 
-                    <img
-                      src={sub.images[0] || 'https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=300&q=80'}
-                      alt={sub.name.th}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=300&q=80';
-                      }}
-                      className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0 border border-slate-200"
-                    />
-                  </div>
+                    <p className="text-sm text-slate-600 mt-4 line-clamp-3">
+                      {localized(item.description)}
+                    </p>
 
-                  <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
-                    {sub.description.th}
-                  </p>
-
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 space-y-1">
-                    <div className="flex justify-between">
-                      <span>Submitted by:</span>
-                      <strong className="text-slate-800">{sub.submittedBy.userName} ({sub.submittedBy.email})</strong>
+                    <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-200 p-3 text-xs">
+                      <div className="flex justify-between gap-3">
+                        <span className="text-slate-500">Submitted by:</span>
+                        <strong className="text-slate-800 text-right">
+                          {item.submittedBy.userName} ({item.submittedBy.email})
+                        </strong>
+                      </div>
+                      <div className="flex justify-between gap-3 mt-2">
+                        <span className="text-slate-500">Hours / Price:</span>
+                        <strong className="text-slate-800 text-right">
+                          {item.hours || '-'} · {localized(item.price)}
+                        </strong>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Hours / Price:</span>
-                      <span className="text-slate-850">{sub.hours} | {sub.price.th}</span>
-                    </div>
-                  </div>
 
-                  {sub.status === 'pending' && (
-                    <div className="flex items-center gap-3 pt-2">
+                    <div className="grid grid-cols-2 gap-2 mt-4">
                       <button
-                        onClick={() => handleApproveSubmission(sub.id)}
-                        className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                        type="button"
+                        onClick={() => handleApproveSubmission(item.id)}
+                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold flex items-center justify-center gap-2"
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>{t('admin.approve')}</span>
+                        อนุมัติ
                       </button>
                       <button
-                        onClick={() => handleRejectSubmission(sub.id)}
-                        className="flex-1 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                        type="button"
+                        onClick={() => handleRejectSubmission(item.id)}
+                        className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-sm font-bold flex items-center justify-center gap-2"
                       >
                         <XCircle className="w-4 h-4" />
-                        <span>{t('admin.reject')}</span>
+                        ปฏิเสธ
                       </button>
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))}
             </div>
           )}
         </div>
       )}
 
-      {/* TAB 4: REVIEWS MODERATION */}
-      {activeTab === 'reviews' && (
-        <div className="space-y-6">
-          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+      {!loading && activeTab === 'reviews' && (
+        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+          {reviewsList.length === 0 ? (
+            <div className="p-12 text-center text-sm text-slate-500">ยังไม่มีรีวิว</div>
+          ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600">
-                <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-200 text-[11px]">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500">
                   <tr>
-                    <th className="px-5 py-3.5">Reviewer</th>
-                    <th className="px-5 py-3.5">Place ID</th>
-                    <th className="px-5 py-3.5">Rating</th>
-                    <th className="px-5 py-3.5">Comment</th>
-                    <th className="px-5 py-3.5">Date</th>
-                    <th className="px-5 py-3.5 text-right">Action</th>
+                    <th className="px-5 py-3">Reviewer</th>
+                    <th className="px-5 py-3">Place ID</th>
+                    <th className="px-5 py-3">Rating</th>
+                    <th className="px-5 py-3">Comment</th>
+                    <th className="px-5 py-3">Date</th>
+                    <th className="px-5 py-3 text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {reviewsList.map((rev) => (
-                    <tr key={rev.id} className="hover:bg-slate-50/80">
-                      <td className="px-5 py-3.5 font-bold text-slate-900">{rev.userName}</td>
-                      <td className="px-5 py-3.5 font-mono text-emerald-700 font-semibold">#{rev.placeId}</td>
-                      <td className="px-5 py-3.5 font-bold text-amber-500">★ {rev.rating}.0</td>
-                      <td className="px-5 py-3.5 max-w-xs truncate text-slate-600">{rev.comment}</td>
-                      <td className="px-5 py-3.5 whitespace-nowrap text-slate-500">
-                        {new Date(rev.createdAt).toLocaleDateString()}
+                  {reviewsList.map((review) => (
+                    <tr key={review.id} className="hover:bg-slate-50/70">
+                      <td className="px-5 py-4 whitespace-nowrap font-bold text-slate-900">
+                        {review.userName}
                       </td>
-                      <td className="px-5 py-3.5 text-right">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <button
-                          onClick={() => handleDeleteReview(rev.id)}
-                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 transition-colors"
-                          title="Delete review"
+                          type="button"
+                          onClick={() => setSelectedPlaceId(review.placeId)}
+                          className="text-emerald-700 font-bold hover:underline"
+                          title="ดูสถานที่"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          #{review.placeId}
                         </button>
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap font-semibold text-amber-600">
+                        ★ {Number(review.rating || 0).toFixed(1)}
+                      </td>
+                      <td className="px-5 py-4 min-w-[320px] max-w-[520px] text-slate-600">
+                        <div className="truncate" title={review.comment}>
+                          {review.comment}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 whitespace-nowrap text-slate-500">
+                        {new Date(review.createdAt).toLocaleDateString('th-TH')}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPlaceId(review.placeId)}
+                            className="p-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            title="ดูสถานที่"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(review.id)}
+                            className="p-2 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100"
+                            title="ลบรีวิว"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
+          )}
         </div>
       )}
-
-      {/* Edit / Add Place Modal */}
-      {(editingPlace || isAddingNew) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto text-slate-900">
-            <button
-              onClick={() => { setEditingPlace(null); setIsAddingNew(false); }}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h2 className="text-xl font-bold text-slate-900">
-              {editingPlace ? `Edit Destination #${editingPlace.id}` : 'Add New Destination'}
-            </h2>
-
-            <form onSubmit={handleSavePlace} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Name (Thai)</label>
-                  <input
-                    type="text"
-                    value={formPlace.name?.th || ''}
-                    onChange={(e) => setFormPlace({
-                      ...formPlace,
-                      name: { ...formPlace.name, th: e.target.value } as any
-                    })}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Name (English)</label>
-                  <input
-                    type="text"
-                    value={formPlace.name?.en || ''}
-                    onChange={(e) => setFormPlace({
-                      ...formPlace,
-                      name: { ...formPlace.name, en: e.target.value } as any
-                    })}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Name (Chinese)</label>
-                  <input
-                    type="text"
-                    value={formPlace.name?.zh || ''}
-                    onChange={(e) => setFormPlace({
-                      ...formPlace,
-                      name: { ...formPlace.name, zh: e.target.value } as any
-                    })}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Province</label>
-                  <input
-                    type="text"
-                    value={formPlace.province?.th || ''}
-                    onChange={(e) => setFormPlace({
-                      ...formPlace,
-                      province: { th: e.target.value, en: e.target.value, zh: e.target.value }
-                    })}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Region</label>
-                  <select
-                    value={formPlace.regionId || 'north'}
-                    onChange={(e) => setFormPlace({ ...formPlace, regionId: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 focus:border-emerald-500 focus:outline-none"
-                  >
-                    <option value="north">North</option>
-                    <option value="central">Central</option>
-                    <option value="northeast">Northeast</option>
-                    <option value="south">South</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-semibold text-slate-700">Description (Thai)</label>
-                <textarea
-                  rows={3}
-                  value={formPlace.description?.th || ''}
-                  onChange={(e) => setFormPlace({
-                    ...formPlace,
-                    description: { ...formPlace.description, th: e.target.value } as any
-                  })}
-                  className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Hours</label>
-                  <input
-                    type="text"
-                    value={formPlace.hours || ''}
-                    onChange={(e) => setFormPlace({ ...formPlace, hours: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700">Price / Entrance Fee</label>
-                  <input
-                    type="text"
-                    value={formPlace.price?.th || ''}
-                    onChange={(e) => setFormPlace({
-                      ...formPlace,
-                      price: { th: e.target.value, en: e.target.value, zh: e.target.value }
-                    })}
-                    className="w-full p-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => { setEditingPlace(null); setIsAddingNew(false); }}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs transition-colors"
-                >
-                  Save Destination
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };
+
+export default AdminDashboardView;

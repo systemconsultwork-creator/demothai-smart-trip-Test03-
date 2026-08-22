@@ -76,6 +76,7 @@ export interface PendingPlace {
   lat?: number;
   lng?: number;
   images: string[];
+  googleMapsUrl?: string;
   submittedBy: {
     userId: string;
     userName: string;
