@@ -12455,5 +12455,62 @@
       "สมุทรปราการ"
     ],
     "createdAt": "2026-08-22T17:15:49.111Z"
+  },
+  {
+    "id": 202,
+    "name": {
+      "th": "โรงเรียนรัตนโกสินทร์สมโภชบางเขน",
+      "en": "Rattanakosin Somphot Bangkhen School",
+      "zh": "拉达那哥辛·索姆霍特·邦肯学校"
+    },
+    "province": {
+      "th": "กรุงเทพฯ",
+      "en": "Bangkok",
+      "zh": "曼谷"
+    },
+    "category": {
+      "th": "ประวัติศาสตร์และมรดกโลก",
+      "en": "History & Heritage",
+      "zh": "历史与世界遗产"
+    },
+    "categoryId": "history",
+    "region": {
+      "th": "ภาคกลาง",
+      "en": "Central Thailand",
+      "zh": "泰国中部"
+    },
+    "regionId": "central",
+    "description": {
+      "th": "โรงเรียนที่ดีที่สุด",
+      "en": "The best school",
+      "zh": "โรงเรียนที่ดีที่สุด"
+    },
+    "rating": 5,
+    "reviewCount": 0,
+    "price": {
+      "th": "เข้าชมฟรี",
+      "en": "เข้าชมฟรี",
+      "zh": "เข้าชมฟรี"
+    },
+    "hours": "08:00 - 17:00",
+    "lat": 13.7563,
+    "lng": 100.5018,
+    "images": [
+      "https://rsb.ac.th/wp-content/uploads/2024/05/rsb-5.jpg"
+    ],
+    "googleMapsUrl": "https://maps.app.goo.gl/dh2mMStYhyxgM5hS6",
+    "sourceSubmissionId": "pend-1787422067065",
+    "address": {
+      "th": "กรุงเทพฯ, ประเทศไทย",
+      "en": "Bangkok, Thailand",
+      "zh": "泰国曼谷"
+    },
+    "contact": "+66 2 250 5500",
+    "tags": [
+      "ประวัติศาสตร์และมรดกโลก",
+      "ภาคกลาง",
+      "กรุงเทพฯ"
+    ],
+    "createdAt": "2026-08-22T18:08:02.300Z"
   }
 ]

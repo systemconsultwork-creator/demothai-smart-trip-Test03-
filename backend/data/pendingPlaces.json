@@ -146,5 +146,101 @@
     "submittedAt": "2026-08-22T17:15:40.038Z",
     "approvedAt": "2026-08-22T17:15:49.114Z",
     "approvedPlaceId": 201
+  },
+  {
+    "id": "pend-1787421683371",
+    "name": {
+      "th": "จุดชมวิวผาช่อ อุทยานแห่งชาติแม่วาง",
+      "en": "Pha Chor Canyon, Mae Wang",
+      "zh": "帕冲大峡谷（清迈大峡谷）"
+    },
+    "province": {
+      "th": "เชียงใหม่",
+      "en": "Chiang Mai",
+      "zh": "清迈"
+    },
+    "category": {
+      "th": "ธรรมชาติและภูเขา",
+      "en": "Nature & Mountains",
+      "zh": "自然与山脉"
+    },
+    "categoryId": "nature",
+    "region": {
+      "th": "ภาคเหนือ",
+      "en": "Northern Thailand",
+      "zh": "泰国北部"
+    },
+    "regionId": "north",
+    "description": {
+      "th": "ปรากฏการณ์ธรรมชาติหน้าผาดินและเสาดินรูปร่างแปลกตาสูงกว่า 30 เมตร แกรนด์แคนยอนเมืองไทย",
+      "en": "Dramatic natural 30-meter high sediment canyon pillars and walking trails in Chiang Mai.",
+      "zh": "ปรากฏการณ์ธรรมชาติหน้าผาดินและเสาดินรูปร่างแปลกตาสูงกว่า 30 เมตร แกรนด์แคนยอนเมืองไทย"
+    },
+    "hours": "08:30 - 16:30",
+    "price": {
+      "th": "คนไทย 20 / ต่างชาติ 100 บาท",
+      "en": "คนไทย 20 / ต่างชาติ 100 บาท",
+      "zh": "คนไทย 20 / ต่างชาติ 100 บาท"
+    },
+    "googleMapsUrl": "https://maps.app.goo.gl/YnT9BwqkBaZwMEcr5",
+    "images": [
+      "https://1672travelbuddy.com/article_images/e460b3187c051ea22541ac29fb551c48.jpg"
+    ],
+    "submittedBy": {
+      "userId": "MVDRBLiPk7dpvYDS5ICv0lheFu02",
+      "userName": "0013_คฑาวุธ ไชยระ",
+      "email": "s67122250013@ssru.ac.th"
+    },
+    "status": "rejected",
+    "submittedAt": "2026-08-22T18:01:23.371Z"
+  },
+  {
+    "id": "pend-1787422067065",
+    "name": {
+      "th": "โรงเรียนรัตนโกสินทร์สมโภชบางเขน",
+      "en": "Rattanakosin Somphot Bangkhen School",
+      "zh": "拉达那哥辛·索姆霍特·邦肯学校"
+    },
+    "province": {
+      "th": "กรุงเทพฯ",
+      "en": "Bangkok",
+      "zh": "曼谷"
+    },
+    "category": {
+      "th": "ประวัติศาสตร์และมรดกโลก",
+      "en": "History & Heritage",
+      "zh": "历史与世界遗产"
+    },
+    "categoryId": "history",
+    "region": {
+      "th": "ภาคกลาง",
+      "en": "Central Thailand",
+      "zh": "泰国中部"
+    },
+    "regionId": "central",
+    "description": {
+      "th": "โรงเรียนที่ดีที่สุด",
+      "en": "The best school",
+      "zh": "โรงเรียนที่ดีที่สุด"
+    },
+    "hours": "08:00 - 17:00",
+    "price": {
+      "th": "เข้าชมฟรี",
+      "en": "เข้าชมฟรี",
+      "zh": "เข้าชมฟรี"
+    },
+    "googleMapsUrl": "https://maps.app.goo.gl/dh2mMStYhyxgM5hS6",
+    "images": [
+      "https://rsb.ac.th/wp-content/uploads/2024/05/rsb-5.jpg"
+    ],
+    "submittedBy": {
+      "userId": "MVDRBLiPk7dpvYDS5ICv0lheFu02",
+      "userName": "0013_คฑาวุธ ไชยระ",
+      "email": "s67122250013@ssru.ac.th"
+    },
+    "status": "approved",
+    "submittedAt": "2026-08-22T18:07:47.065Z",
+    "approvedAt": "2026-08-22T18:08:02.305Z",
+    "approvedPlaceId": 202
   }
 ]
