@@ -1,4 +1,7 @@
 import { Place, Category, ProvinceItem, Review, PendingPlace, User } from '../types';
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
+import { getFirebaseAuth, getFirebaseDb } from './firebase';
+import { isAdminEmail } from '../config/admin';
 
 function getAuthHeaders(includeContentType = true): Record<string, string> {
   const headers: Record<string, string> = {};
@@ -18,8 +21,86 @@ function getAuthHeaders(includeContentType = true): Record<string, string> {
   return headers;
 }
 
+function getFirestorePlaces(): Promise<Place[]> {
+  const db = getFirebaseDb();
+  if (!db) throw new Error('Firebase Firestore is not configured.');
+  return getDocs(collection(db, 'places')).then(snapshot =>
+    snapshot.docs
+      .map(snapshotDoc => snapshotDoc.data() as Place)
+      .filter(place => Number.isFinite(Number(place.id)))
+  );
+}
+
+function requireFirebaseAdmin() {
+  const auth = getFirebaseAuth();
+  const email = auth?.currentUser?.email;
+  if (!auth?.currentUser || !isAdminEmail(email)) {
+    throw new Error('Administrator privileges are required.');
+  }
+  const db = getFirebaseDb();
+  if (!db) throw new Error('Firebase Firestore is not configured.');
+  return db;
+}
+
+function filterPlaces(places: Place[], params: {
+  q?: string;
+  category?: string;
+  region?: string;
+  province?: string;
+  minRating?: number;
+  sort?: 'rating' | 'popular' | 'name';
+  featured?: boolean;
+  popular?: boolean;
+  recommended?: boolean;
+  limit?: number;
+}): Place[] {
+  let filtered = [...places];
+
+  if (params.q) {
+    const query = params.q.toLowerCase().trim();
+    filtered = filtered.filter((p: any) => {
+      const values = [
+        p.name?.th, p.name?.en, p.name?.zh,
+        p.province?.th, p.province?.en, p.province?.zh,
+        p.description?.th, p.description?.en, p.description?.zh,
+        ...(Array.isArray(p.tags) ? p.tags : [])
+      ];
+      return values.some(value => String(value || '').toLowerCase().includes(query));
+    });
+  }
+
+  if (params.category && params.category !== 'all') {
+    filtered = filtered.filter(p => p.categoryId === params.category);
+  }
+  if (params.region && params.region !== 'all') {
+    filtered = filtered.filter(p => p.regionId === params.region);
+  }
+  if (params.province && params.province !== 'all') {
+    filtered = filtered.filter((p: any) =>
+      p.province?.th === params.province || p.province?.en === params.province || p.province?.zh === params.province
+    );
+  }
+  if (params.minRating) {
+    filtered = filtered.filter(p => (p.rating || 0) >= params.minRating!);
+  }
+  if (params.featured) filtered = filtered.filter(p => Boolean((p as any).featured));
+  if (params.popular) filtered = filtered.filter(p => Boolean((p as any).popular));
+  if (params.recommended) filtered = filtered.filter(p => Boolean((p as any).recommended));
+
+  if (params.sort === 'rating') {
+    filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  } else if (params.sort === 'popular') {
+    filtered.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
+  } else if (params.sort === 'name') {
+    filtered.sort((a, b) => (a.name?.th || '').localeCompare(b.name?.th || ''));
+  }
+
+  if (params.limit && params.limit > 0) filtered = filtered.slice(0, params.limit);
+  return filtered;
+}
+
 export const api = {
-  // Places
+  // Places — Firestore is now the source of truth.
   async getPlaces(params: {
     q?: string;
     category?: string;
@@ -32,47 +113,49 @@ export const api = {
     recommended?: boolean;
     limit?: number;
   } = {}): Promise<{ total: number; places: Place[] }> {
-    const query = new URLSearchParams();
-    if (params.q) query.append('q', params.q);
-    if (params.category && params.category !== 'all') query.append('category', params.category);
-    if (params.region && params.region !== 'all') query.append('region', params.region);
-    if (params.province && params.province !== 'all') query.append('province', params.province);
-    if (params.minRating) query.append('minRating', params.minRating.toString());
-    if (params.sort) query.append('sort', params.sort);
-    if (params.featured) query.append('featured', 'true');
-    if (params.popular) query.append('popular', 'true');
-    if (params.recommended) query.append('recommended', 'true');
-    if (params.limit) query.append('limit', params.limit.toString());
-
-    const res = await fetch(`/api/places?${query.toString()}`);
-    if (!res.ok) throw new Error('Failed to fetch places');
-    return res.json();
+    const places = await getFirestorePlaces();
+    const filtered = filterPlaces(places, params);
+    return { total: filtered.length, places: filtered };
   },
 
   async getPlace(id: number): Promise<Place> {
-    const res = await fetch(`/api/places/${id}`);
-    if (!res.ok) throw new Error('Place not found');
-    return res.json();
+    const db = getFirebaseDb();
+    if (!db) throw new Error('Firebase Firestore is not configured.');
+    const snapshot = await getDoc(doc(db, 'places', String(id)));
+    if (!snapshot.exists()) throw new Error('Place not found');
+    return snapshot.data() as Place;
   },
 
   async createPlace(place: Partial<Place>): Promise<Place> {
-    const res = await fetch('/api/places', {
-      method: 'POST',
-      headers: getAuthHeaders(true),
-      body: JSON.stringify(place),
-    });
-    if (!res.ok) throw new Error('Failed to create place');
-    return res.json();
+    const db = requireFirebaseAdmin();
+    const places = await getFirestorePlaces();
+    const newId = places.length > 0 ? Math.max(...places.map(p => Number(p.id) || 0)) + 1 : 1;
+    const newPlace = {
+      ...place,
+      id: newId,
+      rating: Number(place.rating ?? 5),
+      reviewCount: Number(place.reviewCount ?? 0),
+      createdAt: new Date().toISOString(),
+    } as Place;
+
+    await setDoc(doc(db, 'places', String(newId)), newPlace);
+    return newPlace;
   },
 
   async updatePlace(id: number, place: Partial<Place>): Promise<Place> {
-    const res = await fetch(`/api/places/${id}`, {
-      method: 'PUT',
-      headers: getAuthHeaders(true),
-      body: JSON.stringify(place),
-    });
-    if (!res.ok) throw new Error('Failed to update place');
-    return res.json();
+    const db = requireFirebaseAdmin();
+    const placeRef = doc(db, 'places', String(id));
+    const snapshot = await getDoc(placeRef);
+    if (!snapshot.exists()) throw new Error('Place not found');
+
+    const updatedPlace = {
+      ...snapshot.data(),
+      ...place,
+      id,
+    } as Place;
+
+    await setDoc(placeRef, updatedPlace);
+    return updatedPlace;
   },
 
   async deletePlace(id: number): Promise<{
@@ -81,22 +164,21 @@ export const api = {
     submissionUpdated?: boolean;
     deletedAt?: string;
   }> {
-    const res = await fetch(`/api/places/${id}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders(false),
-    });
-    if (!res.ok) {
-      let message = 'Failed to delete place';
-      try {
-        const body = await res.json();
-        if (body?.error) message = body.error;
-      } catch (e) {}
-      throw new Error(message);
-    }
-    return res.json();
+    const db = requireFirebaseAdmin();
+    const placeRef = doc(db, 'places', String(id));
+    const snapshot = await getDoc(placeRef);
+    if (!snapshot.exists()) throw new Error('Place not found');
+
+    await deleteDoc(placeRef);
+    const deletedAt = new Date().toISOString();
+    return {
+      success: true,
+      message: `Place ${id} deleted successfully`,
+      deletedAt,
+    };
   },
 
-  // Categories & Provinces
+  // Categories & Provinces remain configuration data for now.
   async getCategories(): Promise<Category[]> {
     const res = await fetch('/api/categories');
     if (!res.ok) throw new Error('Failed to fetch categories');
