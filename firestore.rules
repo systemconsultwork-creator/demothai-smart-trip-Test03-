@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email == 'systemconsultwork@gmail.com';
+    }
+
+    // Public destination catalog. Only the designated admin can create,
+    // update, or delete places.
+    match /places/{placeId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Users can manage only their own profile/favorites.
+    match /users/{userId} {
+      allow read, create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // Keep the remaining collections closed until they are migrated to
+    // Firestore with their own validation rules.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
