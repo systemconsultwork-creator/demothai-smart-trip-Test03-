@@ -325,9 +325,6 @@ export const AdminDashboardView: React.FC = () => {
 
       {activeTab === 'places' && (
         <div className="space-y-4">
-          <div className="rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm text-emerald-800">
-            <strong>จัดการสถานที่:</strong> หน้านี้แสดงอยู่ภายใน /admin โดยตรง ไม่เปลี่ยนไป /admin/places ดังนั้น Navbar หลักยังใช้งานได้ตามปกติ
-          </div>
           <AdminPlacesView />
         </div>
       )}
