@@ -7,5 +7,14 @@
     "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
     "createdAt": "2026-01-01T00:00:00.000Z",
     "favorites": []
+  },
+  {
+    "id": "usr-1787380135224",
+    "name": "brieflyspace",
+    "email": "brieflyspace@gmail.com",
+    "role": "user",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80",
+    "createdAt": "2026-08-22T06:28:55.224Z",
+    "favorites": []
   }
 ]
