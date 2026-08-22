@@ -11,20 +11,22 @@ import { HomeView } from './views/HomeView';
 import { DiscoverView } from './views/DiscoverView';
 import { SubmitPlaceView } from './views/SubmitPlaceView';
 import { AdminDashboardView } from './views/AdminDashboardView';
+import { AdminLoginView } from './views/AdminLoginView';
 import { ProfileView } from './views/ProfileView';
 
 function AppContent() {
-  const { 
-    currentView, 
+  const {
+    currentView,
     setCurrentView,
     isAdmin,
-    selectedPlaceId, 
+    selectedPlaceId,
     setSelectedPlaceId,
     showToast,
     t
   } = useApp();
 
-  // Check URL query param and path for direct navigation e.g. /admin, /?view=admin or /?placeId=12
+  // Direct navigation: /admin is the protected admin entry point.
+  // Unauthenticated visitors are sent to the dedicated Admin Login screen.
   useEffect(() => {
     const pathname = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
@@ -38,30 +40,20 @@ function AppContent() {
       }
     }
 
-    if (pathname === '/admin' || viewParam === 'admin') {
-      if (isAdmin) {
-        setCurrentView('admin');
-      } else {
-        setCurrentView('home');
-        showToast(t('auth.adminOnly'), 'error');
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState({}, '', '/');
-        }
-      }
+    if (pathname === '/admin' || pathname === '/admin/login' || viewParam === 'admin') {
+      setCurrentView(isAdmin ? 'admin' : 'admin_login');
     }
-  }, [isAdmin, setCurrentView, setSelectedPlaceId, showToast, t]);
+  }, [isAdmin, setCurrentView, setSelectedPlaceId]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAF9] text-[#172033] font-sans selection:bg-emerald-600 selection:text-white">
-      
-      {/* Global Top Navbar */}
       <Navbar />
 
-      {/* Dynamic View Router */}
       <main className="flex-1">
         {currentView === 'home' && <HomeView />}
         {currentView === 'discover' && <DiscoverView />}
         {currentView === 'submit_place' && <SubmitPlaceView />}
+        {currentView === 'admin_login' && <AdminLoginView />}
         {currentView === 'admin' && (
           <AdminRoute>
             <AdminDashboardView />
@@ -70,21 +62,14 @@ function AppContent() {
         {currentView === 'profile' && <ProfileView />}
       </main>
 
-      {/* Destination Detail Modal */}
       <PlaceDetailModal
         placeId={selectedPlaceId}
         onClose={() => setSelectedPlaceId(null)}
       />
 
-      {/* Authentication Modal */}
       <AuthModal />
-
-      {/* Global Toast Notifications */}
       <ToastContainer />
-
-      {/* Global Bottom Footer */}
       <Footer />
-
     </div>
   );
 }
